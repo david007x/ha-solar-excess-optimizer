@@ -1,6 +1,6 @@
 name: "HA Solar Excess Optimizer"
 description: "Modulare PV-Überschussregelung – Wallbox, Heizstab, Steckdosen & mehr"
-version: "6.0.0"
+version: "7.0.0"
 slug: "ha_solar_excess_optimizer"
 init: false
 arch:
@@ -16,10 +16,16 @@ options:
   hysteresis_w: 150
   log_level: "info"
 
-  # Batterie (optional – weglassen wenn keine Batterie vorhanden)
-  # battery_soc_entity: "sensor.batterie_ladestand"
-  # battery_min_soc: 80
-  # battery_priority: 0
+
+  # Batterie-Beispiel (type: battery, einfach wie jedes andere Gerät hinzufügen):
+  # - name: "Hausbatterie"
+  #   type: battery
+  #   priority: 1
+  #   enabled: true
+  #   soc_entity: sensor.batterie_soc
+  #   power_entity: sensor.batterie_ladeleistung   # optional
+  #   target_soc: 100
+  #   max_charge_power_w: 5000
 
   # Zeitbasierte Hysterese (Sekunden)
   on_delay_sec: 30
@@ -65,14 +71,11 @@ schema:
   update_interval_sec: int
   hysteresis_w: int
   log_level: list(debug|info|warning|error)
-  battery_soc_entity: str?
-  battery_min_soc: int?
-  battery_priority: int?
   on_delay_sec: int?
   off_delay_sec: int?
   devices:
     - name: str
-      type: list(switch|stepped|variable|timed)
+      type: list(switch|stepped|variable|timed|battery)
       priority: int
       enabled: bool
       switch_entity: str?
@@ -85,6 +88,9 @@ schema:
       min_runtime_minutes: int?
       on_delay_sec: int?
       off_delay_sec: int?
+      soc_entity: str?
+      target_soc: int?
+      max_charge_power_w: int?
       steps:
         - switch_entity: str
           power_w: int

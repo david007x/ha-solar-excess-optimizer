@@ -237,12 +237,6 @@ HTML = r"""<!DOCTYPE html>
     <div class="stat"><div class="stat-label">Verteilt an</div><div class="stat-value solar" id="consuming-val">–</div><div class="stat-sub">Aktive Geräte</div></div>
     <div class="stat"><div class="stat-label">Verbleibend</div><div class="stat-value" id="remaining-val">–</div><div class="stat-sub">Nach Regelung</div></div>
     <div class="stat"><div class="stat-label">Geräte aktiv</div><div class="stat-value solar" id="active-count">–</div><div class="stat-sub" id="active-names">–</div></div>
-    <div class="stat" id="battery-card" style="display:none">
-      <div class="stat-label">Batterie</div>
-      <div class="stat-value" id="battery-val">–</div>
-      <div class="battery-bar"><div class="battery-fill" id="battery-fill" style="width:0%"></div></div>
-      <div class="stat-sub" id="battery-sub">–</div>
-    </div>
   </div>
   <div class="section-header">
     <span class="section-title">Verbraucher</span>
@@ -311,6 +305,7 @@ HTML = r"""<!DOCTYPE html>
         <div class="type-pill" data-type="stepped" onclick="selectType(this)">Stufen (fix)</div>
         <div class="type-pill" data-type="variable" onclick="selectType(this)">Stufenlos</div>
         <div class="type-pill" data-type="timed" onclick="selectType(this)">Zeitgesteuert</div>
+        <div class="type-pill" data-type="battery" onclick="selectType(this)">🔋 Batterie</div>
       </div>
     </div>
 
@@ -464,22 +459,6 @@ function renderDashboard(d) {
   document.getElementById('last-update').textContent =
     'Aktualisiert ' + new Date().toLocaleTimeString('de-DE');
 
-  // Battery card
-  const batCard = document.getElementById('battery-card');
-  if (d.battery_soc !== null && d.battery_soc !== undefined) {
-    batCard.style.display = '';
-    const pct = d.battery_soc;
-    const ok  = d.battery_ok;
-    document.getElementById('battery-val').textContent = pct + ' %';
-    document.getElementById('battery-val').className = 'stat-value ' + (ok ? 'pos' : 'neg');
-    const fill = document.getElementById('battery-fill');
-    fill.style.width = pct + '%';
-    fill.className = 'battery-fill ' + (ok ? 'ok' : 'low');
-    document.getElementById('battery-sub').textContent =
-      ok ? 'Freigabe erteilt' : `Sperre bis ${d.battery_min_soc}%`;
-  } else {
-    batCard.style.display = 'none';
-  }
 
   const grid = document.getElementById('device-grid');
   grid.innerHTML = d.devices.map(dev => renderDeviceCard(dev)).join('');
@@ -536,6 +515,12 @@ function renderDeviceCard(dev) {
     extra = `<div class="progress-bar"><div class="progress-fill" style="width:${dev.runtime_pct||0}%"></div></div>
              <div class="device-log">${dev.runtime_today_min||0} / ${dev.runtime_target_min} min heute</div>`;
   }
+  if (dev.type === 'battery') {
+    const soc = dev.soc_pct || 0;
+    const tgt = dev.target_pct || 100;
+    extra = `<div class="progress-bar"><div class="progress-fill" style="width:${soc}%;background:linear-gradient(90deg,#3b8ef0,#2dde98)"></div></div>
+             <div class="device-log">SOC: ${soc}% → Ziel: ${tgt}% | Max: ${dev.max_charge_power_w||0}W</div>`;
+  }
 
   const log = (dev.log || []).slice(0, 2).join('<br>');
   const n = encodeURIComponent(dev.name);
@@ -572,8 +557,6 @@ async function loadConfigForm() {
   document.getElementById('cfg-hysteresis').value = cfg.hysteresis_w || 150;
   document.getElementById('cfg-interval').value = cfg.update_interval_sec || 10;
   document.getElementById('cfg-loglevel').value = cfg.log_level || 'info';
-  document.getElementById('cfg-battery-entity').value = cfg.battery_soc_entity || '';
-  document.getElementById('cfg-battery-min-soc').value = cfg.battery_min_soc ?? 80;
   _localDevices = JSON.parse(JSON.stringify(cfg.devices || []));
   renderDeviceList();
 }
@@ -598,6 +581,7 @@ function renderDeviceList() {
 }
 
 function getPowerLabel(d) {
+  if (d.type === 'battery') return `SOC → ${d.target_soc || 100}%`;
   if (d.type === 'stepped') return d.steps?.map(s => s.power_w + 'W').join('/') || '–';
   if (d.type === 'variable') return `${d.power_min}–${d.power_max}W`;
   return (d.power_w || '?') + 'W';
@@ -612,8 +596,6 @@ async function saveConfig() {
     hysteresis_w: parseInt(document.getElementById('cfg-hysteresis').value),
     update_interval_sec: parseInt(document.getElementById('cfg-interval').value),
     log_level: document.getElementById('cfg-loglevel').value,
-    battery_soc_entity: document.getElementById('cfg-battery-entity').value || null,
-    battery_min_soc: parseInt(document.getElementById('cfg-battery-min-soc').value) || 80,
     devices: _localDevices,
   };
   await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
@@ -634,7 +616,7 @@ function selectType(el) {
   document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
   _selectedType = el.dataset.type;
-  ['switch','stepped','variable','timed'].forEach(t =>
+  ['switch','stepped','variable','timed','battery'].forEach(t =>
     document.getElementById('fields-' + t).style.display = t === _selectedType ? 'block' : 'none');
 }
 
@@ -693,6 +675,11 @@ function addDevice() {
     dev.switch_entity = document.getElementById('tim-entity').value;
     dev.power_w = parseInt(document.getElementById('tim-power').value) || 0;
     dev.min_runtime_minutes = parseInt(document.getElementById('tim-runtime').value) || 60;
+  } else if (_selectedType === 'battery') {
+    dev.soc_entity = document.getElementById('bat-soc-entity').value;
+    dev.power_entity = document.getElementById('bat-power-entity').value || null;
+    dev.target_soc = parseInt(document.getElementById('bat-target-soc').value) || 100;
+    dev.max_charge_power_w = parseInt(document.getElementById('bat-max-power').value) || 5000;
   }
 
   _localDevices.push(dev);
@@ -701,6 +688,8 @@ function addDevice() {
   document.getElementById('add-device-section').classList.remove('open');
   _stepRows = [];
   document.getElementById('stepped-rows').innerHTML = '';
+  document.getElementById('bat-soc-entity').value = '';
+  document.getElementById('bat-power-entity').value = '';
 }
 
 // ─── Config API ───────────────────────────────────────────────────────────────

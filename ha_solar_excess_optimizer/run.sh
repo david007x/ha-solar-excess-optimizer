@@ -4,7 +4,7 @@ export HA_TOKEN="${SUPERVISOR_TOKEN}"
 export HA_URL="http://supervisor/core"
 export LOG_LEVEL=$(bashio::config 'log_level')
 
-bashio::log.info "HA Solar Excess Optimizer v6 startet..."
+bashio::log.info "HA Solar Excess Optimizer v7 startet..."
 
 # ── Alte Einträge bereinigen + Panel registrieren ─────────────────────────────
 python3 /app/cleanup_panel.py

@@ -3,6 +3,7 @@ from devices.switch_device import SwitchDevice
 from devices.stepped_device import SteppedDevice
 from devices.variable_device import VariableDevice
 from devices.timed_device import TimedDevice
+from devices.battery_device import BatteryDevice
 
 
 def create_device(cfg: dict, hysteresis_w: int = 150) -> BaseDevice:
@@ -17,6 +18,7 @@ def create_device(cfg: dict, hysteresis_w: int = 150) -> BaseDevice:
         "stepped":  SteppedDevice,
         "variable": VariableDevice,
         "timed":    TimedDevice,
+        "battery":  BatteryDevice,
     }
 
     cls = registry.get(device_type)
