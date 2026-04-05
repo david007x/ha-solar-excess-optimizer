@@ -12,8 +12,9 @@ class SolarController:
         self.hysteresis_w: int  = cfg.get("hysteresis_w", 150)
         self.grid_entity: str   = cfg["grid_power_entity"]
 
-        # Batterie-Konfiguration
-        self.battery_soc_entity: str | None = cfg.get("battery_soc_entity")
+        # Batterie-Konfiguration (optional – None oder leer = deaktiviert)
+        _bse = cfg.get("battery_soc_entity", "")
+        self.battery_soc_entity: str | None = _bse if _bse else None
         self.battery_min_soc: int           = cfg.get("battery_min_soc", 0)
         # Priorität der Batterie: Geräte mit priority > battery_priority werden
         # erst aktiviert wenn Batterie >= battery_min_soc

@@ -572,6 +572,8 @@ async function loadConfigForm() {
   document.getElementById('cfg-hysteresis').value = cfg.hysteresis_w || 150;
   document.getElementById('cfg-interval').value = cfg.update_interval_sec || 10;
   document.getElementById('cfg-loglevel').value = cfg.log_level || 'info';
+  document.getElementById('cfg-battery-entity').value = cfg.battery_soc_entity || '';
+  document.getElementById('cfg-battery-min-soc').value = cfg.battery_min_soc ?? 80;
   _localDevices = JSON.parse(JSON.stringify(cfg.devices || []));
   renderDeviceList();
 }
@@ -610,6 +612,8 @@ async function saveConfig() {
     hysteresis_w: parseInt(document.getElementById('cfg-hysteresis').value),
     update_interval_sec: parseInt(document.getElementById('cfg-interval').value),
     log_level: document.getElementById('cfg-loglevel').value,
+    battery_soc_entity: document.getElementById('cfg-battery-entity').value || null,
+    battery_min_soc: parseInt(document.getElementById('cfg-battery-min-soc').value) || 80,
     devices: _localDevices,
   };
   await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
