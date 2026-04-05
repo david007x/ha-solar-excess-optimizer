@@ -4,7 +4,6 @@ import logging
 import config as cfg_module
 from aiohttp import web
 from controller import SolarController
-import ha_publisher
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 _cfg = cfg_module.load()
@@ -179,6 +178,42 @@ HTML = r"""<!DOCTYPE html>
   .ep-state { color: var(--solar); font-size: .68rem; white-space: nowrap; }
   .ep-empty { padding: .75rem; color: var(--muted); font-size: .78rem; font-family: var(--mono); text-align: center; }
   .ep-loading { padding: .75rem; color: var(--muted); font-size: .75rem; font-family: var(--mono); text-align: center; }
+
+  /* OVERRIDE BUTTONS */
+  .override-bar { display: flex; gap: 4px; margin-top: .6rem; }
+  .ov-btn { flex: 1; font-family: var(--mono); font-size: .6rem; padding: 5px 4px;
+            border-radius: 6px; border: 1px solid var(--border); cursor: pointer;
+            background: var(--surface2); color: var(--muted); transition: all .2s;
+            text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  .ov-btn.active-on  { background: #0d3d2a; color: var(--green); border-color: var(--green); }
+  .ov-btn.active-off { background: #3d0a15; color: var(--red);   border-color: var(--red);   }
+  .ov-btn.active-auto{ background: #0d2040; color: var(--grid);  border-color: var(--grid);  }
+  /* BATTERY CARD */
+  .battery-bar { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin-top: .35rem; }
+  .battery-fill { height: 100%; border-radius: 99px; transition: width .5s; }
+  .battery-fill.ok  { background: linear-gradient(90deg, var(--grid), var(--green)); }
+  .battery-fill.low { background: linear-gradient(90deg, var(--red), var(--orange)); }
+  /* TIMER BAR */
+  .timer-wrap { display: flex; align-items: center; gap: .4rem; margin-bottom: .4rem; }
+  .timer-label { font-size: .6rem; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+  .timer-bar { flex: 1; height: 3px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .timer-fill-on  { height: 100%; background: var(--green);  border-radius: 99px; transition: width 1s; }
+  .timer-fill-off { height: 100%; background: var(--orange); border-radius: 99px; transition: width 1s; }
+  /* MOBILE */
+  @media (max-width: 600px) {
+    header { padding: .75rem 1rem; }
+    .logo { font-size: .9rem; }
+    .tab { font-size: .6rem; padding: 5px 8px; }
+    .page { padding: 1rem; }
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: .6rem; }
+    .stat { padding: .85rem 1rem; }
+    .stat-value { font-size: 1.4rem; }
+    .device-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .ov-btn { font-size: .55rem; padding: 4px 2px; }
+    .btn { font-size: .7rem; padding: .5rem .9rem; }
+    .ep-btn { font-size: .7rem; padding: .4rem .5rem; }
+  }
 </style>
 </head>
 <body>
@@ -192,7 +227,6 @@ HTML = r"""<!DOCTYPE html>
     <button class="tab active" onclick="showPage('dashboard')">Dashboard</button>
     <button class="tab" onclick="showPage('config')">Verbraucher</button>
     <button class="tab" onclick="showPage('log')">Log</button>
-    <button class="tab" onclick="showPage('hadash')">HA Dashboard</button>
   </div>
 </header>
 
@@ -203,6 +237,12 @@ HTML = r"""<!DOCTYPE html>
     <div class="stat"><div class="stat-label">Verteilt an</div><div class="stat-value solar" id="consuming-val">–</div><div class="stat-sub">Aktive Geräte</div></div>
     <div class="stat"><div class="stat-label">Verbleibend</div><div class="stat-value" id="remaining-val">–</div><div class="stat-sub">Nach Regelung</div></div>
     <div class="stat"><div class="stat-label">Geräte aktiv</div><div class="stat-value solar" id="active-count">–</div><div class="stat-sub" id="active-names">–</div></div>
+    <div class="stat" id="battery-card" style="display:none">
+      <div class="stat-label">Batterie</div>
+      <div class="stat-value" id="battery-val">–</div>
+      <div class="battery-bar"><div class="battery-fill" id="battery-fill" style="width:0%"></div></div>
+      <div class="stat-sub" id="battery-sub">–</div>
+    </div>
   </div>
   <div class="section-header">
     <span class="section-title">Verbraucher</span>
@@ -390,67 +430,6 @@ HTML = r"""<!DOCTYPE html>
   </div>
 </div>
 
-<!-- HA DASHBOARD -->
-<div id="page-hadash" class="page">
-  <div class="config-card">
-    <div class="config-title">// HA DASHBOARD SETUP</div>
-    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.7">
-      Lade die Dateien herunter und folge der Anleitung um das native HA Dashboard einzurichten.
-      Das Dashboard enthält: Live-Status Tab, Konfiguration (iframe) Tab und Statistiken Tab.
-    </p>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem">
-      <div class="config-card" style="margin:0;border-color:var(--solar)">
-        <div style="font-size:.7rem;font-family:var(--mono);color:var(--solar);margin-bottom:.5rem">STEP 1</div>
-        <div style="font-weight:700;margin-bottom:.35rem">REST Sensoren</div>
-        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;line-height:1.6">
-          Macht Add-on Daten als HA Entities verfügbar (Verlauf, Automationen, Energie-Dashboard).
-        </div>
-        <a href="/api/dashboard/solar_excess_optimizer.yaml" download>
-          <button class="btn btn-primary" style="width:100%">⬇ solar_excess_optimizer.yaml</button>
-        </a>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:.4rem;font-family:var(--mono)">
-          → nach /config/packages/ kopieren
-        </div>
-      </div>
-
-      <div class="config-card" style="margin:0;border-color:var(--grid)">
-        <div style="font-size:.7rem;font-family:var(--mono);color:var(--grid);margin-bottom:.5rem">STEP 2</div>
-        <div style="font-weight:700;margin-bottom:.35rem">Lovelace Dashboard</div>
-        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;line-height:1.6">
-          Dashboard YAML mit 3 Tabs: Live-Status, Konfiguration (iframe), Statistiken.
-        </div>
-        <a href="/api/dashboard/lovelace_dashboard.yaml" download>
-          <button class="btn btn-primary" style="width:100%">⬇ lovelace_dashboard.yaml</button>
-        </a>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:.4rem;font-family:var(--mono)">
-          → in HA Rohen Konfigurationseditor einfügen
-        </div>
-      </div>
-    </div>
-
-    <div class="config-card" style="margin:0;border-color:var(--green)">
-      <div style="font-size:.7rem;font-family:var(--mono);color:var(--green);margin-bottom:.5rem">ANLEITUNG</div>
-      <div style="font-weight:700;margin-bottom:.75rem">Setup-Schritte</div>
-      <ol style="font-size:.82rem;color:var(--muted);line-height:2;padding-left:1.25rem">
-        <li>Ordner <code style="background:var(--surface2);padding:1px 6px;border-radius:4px">/config/packages/</code> erstellen (falls nicht vorhanden)</li>
-        <li><code style="background:var(--surface2);padding:1px 6px;border-radius:4px">solar_excess_optimizer.yaml</code> dort ablegen</li>
-        <li>In <code style="background:var(--surface2);padding:1px 6px;border-radius:4px">configuration.yaml</code> eintragen:<br>
-          <code style="background:var(--surface2);padding:3px 8px;border-radius:4px;display:inline-block;margin-top:4px">homeassistant:<br>&nbsp;&nbsp;packages:<br>&nbsp;&nbsp;&nbsp;&nbsp;solar_excess: !include packages/solar_excess_optimizer.yaml</code>
-        </li>
-        <li>HA neu starten</li>
-        <li>Neues Dashboard anlegen → Rohen Konfigurationseditor → <code style="background:var(--surface2);padding:1px 6px;border-radius:4px">lovelace_dashboard.yaml</code> einfügen</li>
-        <li>Im Dashboard Tab "Konfiguration": URL auf deine HA IP anpassen:<br>
-          <code style="background:var(--surface2);padding:3px 8px;border-radius:4px;display:inline-block;margin-top:4px">url: "http://DEINE-HA-IP:8099"</code>
-        </li>
-      </ol>
-      <a href="/api/dashboard/SETUP.md" download style="display:inline-block;margin-top:1rem">
-        <button class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">📄 Vollständige Anleitung (SETUP.md)</button>
-      </a>
-    </div>
-  </div>
-</div>
-
 <script>
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function showPage(id) {
@@ -485,6 +464,23 @@ function renderDashboard(d) {
   document.getElementById('last-update').textContent =
     'Aktualisiert ' + new Date().toLocaleTimeString('de-DE');
 
+  // Battery card
+  const batCard = document.getElementById('battery-card');
+  if (d.battery_soc !== null && d.battery_soc !== undefined) {
+    batCard.style.display = '';
+    const pct = d.battery_soc;
+    const ok  = d.battery_ok;
+    document.getElementById('battery-val').textContent = pct + ' %';
+    document.getElementById('battery-val').className = 'stat-value ' + (ok ? 'pos' : 'neg');
+    const fill = document.getElementById('battery-fill');
+    fill.style.width = pct + '%';
+    fill.className = 'battery-fill ' + (ok ? 'ok' : 'low');
+    document.getElementById('battery-sub').textContent =
+      ok ? 'Freigabe erteilt' : `Sperre bis ${d.battery_min_soc}%`;
+  } else {
+    batCard.style.display = 'none';
+  }
+
   const grid = document.getElementById('device-grid');
   grid.innerHTML = d.devices.map(dev => renderDeviceCard(dev)).join('');
 
@@ -512,7 +508,19 @@ function renderDeviceCard(dev) {
   const badgeCls = dev.forced ? 'badge-forced' : (dev.active ? 'badge-on' : 'badge-off');
   const badgeText = dev.forced ? '⚡ ZWANG' : (dev.active ? '● AN' : '○ AUS');
   const cardCls = dev.forced ? 'forced' : (dev.active ? 'on' : '');
+  const ov = dev.override || 'auto';
   let extra = '';
+  // Timer bars
+  if (dev.on_timer_pct > 0 && !dev.active) {
+    extra += `<div class="timer-wrap"><span class="timer-label">EIN in…</span>
+      <div class="timer-bar"><div class="timer-fill-on" style="width:${dev.on_timer_pct}%"></div></div>
+      <span class="timer-label">${dev.on_timer_pct}%</span></div>`;
+  }
+  if (dev.off_timer_pct > 0 && dev.active) {
+    extra += `<div class="timer-wrap"><span class="timer-label">AUS in…</span>
+      <div class="timer-bar"><div class="timer-fill-off" style="width:${dev.off_timer_pct}%"></div></div>
+      <span class="timer-label">${dev.off_timer_pct}%</span></div>`;
+  }
 
   if (dev.type === 'variable' && dev.active) {
     extra = `<div class="progress-bar"><div class="progress-fill" style="width:${dev.power_pct||0}%"></div></div>
@@ -530,6 +538,7 @@ function renderDeviceCard(dev) {
   }
 
   const log = (dev.log || []).slice(0, 2).join('<br>');
+  const n = encodeURIComponent(dev.name);
   return `
     <div class="device-card ${cardCls}">
       <div class="device-top">
@@ -542,6 +551,14 @@ function renderDeviceCard(dev) {
       <div class="device-power">${dev.power_w || 0} W</div>
       ${extra}
       <div class="device-log">${log}</div>
+      <div class="override-bar">
+        <button class="ov-btn ${ov==='force_on'?'active-on':''}"
+          onclick="setOverride('${n}','force_on')">⬆ Zwang AN</button>
+        <button class="ov-btn ${ov==='auto'?'active-auto':''}"
+          onclick="setOverride('${n}','auto')">⟳ Auto</button>
+        <button class="ov-btn ${ov==='force_off'?'active-off':''}"
+          onclick="setOverride('${n}','force_off')">⬇ Zwang AUS</button>
+      </div>
     </div>`;
 }
 
@@ -787,6 +804,33 @@ document.addEventListener('dblclick', e => {
   }
 });
 
+
+// ─── Override ─────────────────────────────────────────────────────────────────
+async function setOverride(deviceName, mode) {
+  await fetch('/api/override', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: decodeURIComponent(deviceName), mode})
+  });
+  await refresh();
+}
+
+// ─── Entity Picker Cache ──────────────────────────────────────────────────────
+const _epCache = {};
+const _EP_TTL_MS = 5 * 60 * 1000; // 5 Minuten Cache
+
+async function loadEntities(domains) {
+  const key = domains || '_all';
+  const now = Date.now();
+  if (_epCache[key] && (now - _epCache[key].ts) < _EP_TTL_MS) {
+    return _epCache[key].data;
+  }
+  const qs = domains ? '?domain=' + domains : '';
+  const r = await fetch('/api/entities' + qs);
+  const data = await r.json();
+  _epCache[key] = { data, ts: now };
+  return data;
+}
 </script>
 </body>
 </html>"""
@@ -849,25 +893,41 @@ async def control_loop(cfg: dict):
 
 # ─── Start ────────────────────────────────────────────────────────────────────
 
-async def handle_dashboard_file(request):
-    """Liefert Dashboard-Dateien (YAML, SETUP.md) zum Download."""
-    import os
-    filename = request.match_info["filename"]
-    # Security: nur erlaubte Dateien
-    allowed = {"lovelace_dashboard.yaml", "solar_excess_optimizer.yaml", "SETUP.md"}
-    if filename not in allowed:
-        return web.Response(status=404)
-    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(base, "ha_dashboard", filename)
-    if not os.path.exists(path):
-        return web.Response(status=404)
-    with open(path) as f:
-        text = f.read()
-    ct = "text/yaml" if filename.endswith(".yaml") else "text/markdown"
-    return web.Response(text=text, content_type=ct,
-                        headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+async def handle_favicon(request):
+    svg = b"""<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>
+      <circle cx='16' cy='16' r='8' fill='#f5c842'/>
+      <g stroke='#f5c842' stroke-width='2.5' stroke-linecap='round'>
+        <line x1='16' y1='2' x2='16' y2='6'/>
+        <line x1='16' y1='26' x2='16' y2='30'/>
+        <line x1='2' y1='16' x2='6' y2='16'/>
+        <line x1='26' y1='16' x2='30' y2='16'/>
+        <line x1='6.3' y1='6.3' x2='9.2' y2='9.2'/>
+        <line x1='22.8' y1='22.8' x2='25.7' y2='25.7'/>
+        <line x1='25.7' y1='6.3' x2='22.8' y2='9.2'/>
+        <line x1='9.2' y1='22.8' x2='6.3' y2='25.7'/>
+      </g>
+    </svg>"""
+    return web.Response(body=svg, content_type='image/svg+xml',
+                        headers={'Cache-Control': 'max-age=86400'})
 
 
+async def handle_override(request):
+    """POST /api/override  { name: str, mode: auto|force_on|force_off }"""
+    try:
+        body = await request.json()
+        name = body.get("name", "")
+        mode = body.get("mode", "auto")
+        device = controller.get_device(name)
+        if device is None:
+            return web.Response(status=404,
+                text=json.dumps({"error": f"Gerät '{name}' nicht gefunden"}))
+        device.set_override(mode)
+        logger.info(f"Override gesetzt: {name} → {mode}")
+        return web.Response(text=json.dumps({"ok": True, "name": name, "mode": mode}),
+                            content_type="application/json")
+    except Exception as e:
+        return web.Response(status=400, text=json.dumps({"error": str(e)}))
 
 async def handle_entities(request):
     """
@@ -923,8 +983,9 @@ async def main():
     app.router.add_get("/api/status", handle_status)
     app.router.add_get("/api/config", handle_get_config)
     app.router.add_post("/api/config", handle_post_config)
+    app.router.add_get("/favicon.ico", handle_favicon)
+    app.router.add_post("/api/override", handle_override)
     app.router.add_get("/api/entities", handle_entities)
-    app.router.add_get("/api/dashboard/{filename}", handle_dashboard_file)
 
     runner = web.AppRunner(app)
     await runner.setup()

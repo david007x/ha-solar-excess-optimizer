@@ -1,6 +1,6 @@
 name: "HA Solar Excess Optimizer"
 description: "Modulare PV-Überschussregelung – Wallbox, Heizstab, Steckdosen & mehr"
-version: "4.0.0"
+version: "5.0.0"
 slug: "ha_solar_excess_optimizer"
 init: false
 arch:
@@ -15,6 +15,15 @@ options:
   update_interval_sec: 10
   hysteresis_w: 150
   log_level: "info"
+
+  # Batterie (optional)
+  battery_soc_entity: ""
+  battery_min_soc: 80
+  battery_priority: 0
+
+  # Zeitbasierte Hysterese (Sekunden)
+  on_delay_sec: 30
+  off_delay_sec: 20
   devices:
     - name: "Wallbox"
       type: "variable"
@@ -56,6 +65,11 @@ schema:
   update_interval_sec: int
   hysteresis_w: int
   log_level: list(debug|info|warning|error)
+  battery_soc_entity: str?
+  battery_min_soc: int?
+  battery_priority: int?
+  on_delay_sec: int?
+  off_delay_sec: int?
   devices:
     - name: str
       type: list(switch|stepped|variable|timed)
@@ -69,6 +83,8 @@ schema:
       power_step: int?
       ramp_interval_sec: int?
       min_runtime_minutes: int?
+      on_delay_sec: int?
+      off_delay_sec: int?
       steps:
         - switch_entity: str
           power_w: int
