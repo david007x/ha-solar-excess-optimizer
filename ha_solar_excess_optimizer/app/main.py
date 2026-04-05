@@ -868,30 +868,6 @@ async def handle_dashboard_file(request):
                         headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
-async def main():
-    global controller
-    cfg = cfg_module.load()
-    controller = SolarController(cfg)
-
-    app = web.Application()
-    app.router.add_get("/", handle_index)
-    app.router.add_get("/api/status", handle_status)
-    app.router.add_get("/api/config", handle_get_config)
-    app.router.add_post("/api/config", handle_post_config)
-    app.router.add_get("/api/entities", handle_entities)
-    app.router.add_get("/api/dashboard/{filename}", handle_dashboard_file)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    await web.TCPSite(runner, "0.0.0.0", 8099).start()
-    logger.info("Web UI: http://0.0.0.0:8099")
-
-    await control_loop(cfg)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
 
 async def handle_entities(request):
     """
@@ -935,3 +911,28 @@ async def handle_entities(request):
     except Exception as e:
         logger.error(f"handle_entities: {e}")
         return web.Response(status=500, text=json.dumps({"error": str(e)}))
+
+
+async def main():
+    global controller
+    cfg = cfg_module.load()
+    controller = SolarController(cfg)
+
+    app = web.Application()
+    app.router.add_get("/", handle_index)
+    app.router.add_get("/api/status", handle_status)
+    app.router.add_get("/api/config", handle_get_config)
+    app.router.add_post("/api/config", handle_post_config)
+    app.router.add_get("/api/entities", handle_entities)
+    app.router.add_get("/api/dashboard/{filename}", handle_dashboard_file)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, "0.0.0.0", 8099).start()
+    logger.info("Web UI: http://0.0.0.0:8099")
+
+    await control_loop(cfg)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
