@@ -4,7 +4,7 @@ Home Assistant Add-on Repository für die modulare PV-Überschussregelung.
 
 ## Installation
 
-1. [![Add Repository](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/DEIN-USERNAME/ha-solar-excess-optimizer)
+1. [![Add Repository](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/david007x/ha-solar-excess-optimizer)
 
    **Oder manuell:**
    Einstellungen → Add-ons → Add-on Store → ⋮ → Repositories → diese URL einfügen

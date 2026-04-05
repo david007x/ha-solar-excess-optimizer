@@ -11,6 +11,9 @@ RUN pip3 install --break-system-packages \
     aiofiles \
     pyyaml
 
+# Panel HTML in eigenen Ordner kopieren (run.sh kopiert es nach /config/www)
+COPY panel/ /panel/
+
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
