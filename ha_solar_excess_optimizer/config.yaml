@@ -79,3 +79,4 @@ ports_description:
   8099/tcp: "HA Solar Excess Optimizer Web UI"
 map:
   - config:rw
+  - share:rw

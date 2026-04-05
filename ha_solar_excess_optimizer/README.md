@@ -1,4 +1,4 @@
-# ☀️ HA Solar Excess Optimizer v4 – Home Assistant Add-on
+# ☀️ HA Solar Excess Optimizer v2 – Home Assistant Add-on
 
 Modulare PV-Überschussregelung mit 4 Gerätetypen, Web UI und YAML-Konfiguration.
 
@@ -105,3 +105,25 @@ app/
 
 Neuen Gerätetyp hinzufügen: neue Klasse in `devices/` erstellen,
 in `factory.py` registrieren – fertig.
+
+## HA Sidebar Panel
+
+Das Add-on registriert beim Start automatisch ein **Custom Panel** in der HA Sidebar
+unter dem Namen "Solar Optimizer" mit dem Icon ☀.
+
+### Manueller Fallback (falls automatisch nicht klappt)
+
+1. Panel HTML liegt nach Add-on-Start unter `/config/www/solar_excess_optimizer.html`
+2. Folgendes in `configuration.yaml` eintragen und HA neu starten:
+
+```yaml
+panel_custom:
+  solar_excess_optimizer:
+    name: solar-optimizer-panel
+    sidebar_title: Solar Optimizer
+    sidebar_icon: mdi:solar-power
+    url_path: solar-optimizer
+    module_url: /local/solar_excess_optimizer.html
+```
+
+3. HA neu starten → "Solar Optimizer" erscheint in der Sidebar
