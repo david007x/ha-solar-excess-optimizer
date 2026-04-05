@@ -3,43 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-      overflow: hidden;
-      background: #080f1a;
-    }
-    iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      display: block;
-    }
-    #error {
-      display: none;
-      color: #ff4d6a;
-      font-family: monospace;
-      padding: 2rem;
-      background: #080f1a;
-    }
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #080f1a; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+    #err { display: none; color: #ff4d6a; font-family: monospace; padding: 2rem; background: #080f1a; font-size: 1rem; }
   </style>
 </head>
 <body>
-  <div id="error"></div>
-  <iframe id="frame" src="" allowfullscreen></iframe>
+  <div id="err"></div>
+  <iframe id="f"></iframe>
   <script>
-    // Hostname aus HA holen, Port 8099 anhängen
     const host = window.location.hostname;
-    const url = `http://${host}:8099`;
-    const frame = document.getElementById('frame');
-    frame.src = url;
-    frame.onerror = () => {
-      document.getElementById('error').style.display = 'block';
-      document.getElementById('error').textContent =
-        `⚠ Add-on nicht erreichbar unter ${url} – läuft das Add-on?`;
-      frame.style.display = 'none';
+    const url = 'http://' + host + ':8099';
+    const f = document.getElementById('f');
+    f.src = url;
+    f.onerror = function() {
+      document.getElementById('err').style.display = 'block';
+      document.getElementById('err').innerText = '⚠ Add-on nicht erreichbar unter ' + url;
+      f.style.display = 'none';
     };
   </script>
 </body>

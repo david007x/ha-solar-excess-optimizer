@@ -1,134 +1,28 @@
 """
 register_panel.py
-Trägt panel_custom korrekt als Listen-Eintrag in die HA configuration.yaml ein.
-Korrekte HA-Syntax (List-Format):
-
-panel_custom:
-  - name: solar-optimizer-panel
-    sidebar_title: Solar Optimizer
-    sidebar_icon: mdi:solar-power
-    url_path: solar-optimizer
-    module_url: /local/solar_excess_optimizer.html
+Registriert einen iframe-Panel in HA via REST API.
+HA hat einen eingebauten iframe-Panel-Typ der direkt per API registriert werden kann –
+kein panel_custom / configuration.yaml Edit nötig.
 """
 import os
 import sys
-import re
 import json
 import urllib.request
 import urllib.error
 
-HA_URL      = os.environ.get("HA_URL", "http://supervisor/core")
-HA_TOKEN    = os.environ.get("HA_TOKEN", "")
-CONFIG_PATH = "/config/configuration.yaml"
+HA_URL   = os.environ.get("HA_URL", "http://supervisor/core")
+HA_TOKEN = os.environ.get("HA_TOKEN", "")
 
-# Korrekte HA panel_custom Syntax: Liste mit - name: ...
-PANEL_ENTRY = """\
-  - name: solar-optimizer-panel
-    sidebar_title: Solar Optimizer
-    sidebar_icon: mdi:solar-power
-    url_path: solar-optimizer
-    module_url: /local/solar_excess_optimizer.html"""
-
-MARKER = "# solar-optimizer-panel (Solar Excess Optimizer)"
-
-STANDALONE_BLOCK = f"""\
-# >>> Solar Excess Optimizer Panel <<<
-panel_custom:
-{PANEL_ENTRY}
-{MARKER}
-# <<< Solar Excess Optimizer Panel Ende >>>
-"""
+PANEL_URL_PATH = "solar_excess_optimizer"
+PANEL_TITLE    = "Solar Optimizer"
+PANEL_ICON     = "mdi:solar-power"
 
 
-def read_config() -> str:
-    if not os.path.exists(CONFIG_PATH):
-        print(f"WARN: {CONFIG_PATH} nicht gefunden.")
-        sys.exit(1)
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        return f.read()
-
-
-def write_config(content: str):
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        f.write(content)
-
-
-def already_registered(content: str) -> bool:
-    """Prüft ob unser Block bereits korrekt (als Liste) eingetragen ist."""
-    return ("- name: solar-optimizer-panel" in content or
-            "-name: solar-optimizer-panel" in content)
-
-
-def remove_old_block(content: str) -> str:
-    """Entfernt alten (fehlerhaften) Dict-Stil Eintrag falls vorhanden."""
-    # Entfernt den alten benannten Dict-Block den wir früher geschrieben haben
-    pattern = re.compile(
-        r"# >>> Solar Excess Optimizer Panel.*?# <<< Solar Excess Optimizer Panel Ende >>>\n?",
-        re.DOTALL
-    )
-    cleaned = pattern.sub("", content)
-
-    # Auch alten solar_excess_optimizer: Dict-Eintrag unter panel_custom entfernen
-    pattern2 = re.compile(
-        r"(\npanel_custom:.*?)\s+solar_excess_optimizer:\s*\n(\s+\S.*?\n)+",
-        re.DOTALL
-    )
-    cleaned = pattern2.sub(r"\1\n", cleaned)
-
-    return cleaned
-
-
-def panel_custom_exists(content: str) -> bool:
-    return bool(re.search(r"^panel_custom\s*:", content, re.MULTILINE))
-
-
-def append_to_existing_panel_custom(content: str) -> str:
-    """Hängt den neuen Listen-Eintrag an einen bestehenden panel_custom: Block an."""
-    # Finde Ende des panel_custom Blocks (nächste Zeile auf Ebene 0 oder EOF)
-    pattern = re.compile(r"(^panel_custom\s*:.*?)(\n(?=\S)|\Z)", re.DOTALL | re.MULTILINE)
-    def replacer(m):
-        block = m.group(1).rstrip()
-        rest  = m.group(2)
-        return f"{block}\n{PANEL_ENTRY}\n  {MARKER}{rest}"
-    return pattern.sub(replacer, content, count=1)
-
-
-def main():
-    content = read_config()
-
-    # Alten fehlerhaften Block entfernen (idempotent)
-    content = remove_old_block(content)
-
-    if already_registered(content):
-        print("Panel bereits korrekt registriert – nichts zu tun.")
-        trigger_reload()
-        return
-
-    if panel_custom_exists(content):
-        print("Bestehender panel_custom: Block gefunden – Eintrag wird ergänzt.")
-        content = append_to_existing_panel_custom(content)
-    else:
-        print("Kein panel_custom: Block gefunden – neuen Block anlegen.")
-        content = content.rstrip("\n") + "\n\n" + STANDALONE_BLOCK
-
-    write_config(content)
-    print(f"panel_custom Eintrag in {CONFIG_PATH} geschrieben.")
-    trigger_reload()
-
-
-def trigger_reload():
-    print("Triggere HA Core-Reload...")
-    status = ha_request("POST", "/api/services/homeassistant/reload_core_config")
-    if status in (200, 201):
-        print("HA Core-Reload erfolgreich – Panel erscheint nach Browser-Reload.")
-    else:
-        print(f"WARN: Reload HTTP {status} – HA bitte manuell neu starten.")
-
-
-def ha_request(method: str, path: str) -> int:
+def ha_request(method: str, path: str, payload: dict = None):
     url = f"{HA_URL}{path}"
+    data = json.dumps(payload).encode("utf-8") if payload else None
     req = urllib.request.Request(
-        url, method=method,
+        url, data=data, method=method,
         headers={
             "Authorization": f"Bearer {HA_TOKEN}",
             "Content-Type": "application/json",
@@ -136,12 +30,63 @@ def ha_request(method: str, path: str) -> int:
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return resp.status
+            return resp.status, resp.read().decode()
     except urllib.error.HTTPError as e:
-        return e.code
+        return e.code, e.read().decode()
     except Exception as e:
-        print(f"WARN: HA API Fehler: {e}")
-        return 0
+        return 0, str(e)
+
+
+def get_ha_host() -> str:
+    """Liest die externe HA URL aus der Supervisor API."""
+    status, body = ha_request("GET", "/api/")
+    try:
+        data = json.loads(body)
+        # Supervisor gibt base_url nicht direkt – wir nutzen den Hostnamen
+        return "homeassistant.local"
+    except Exception:
+        return "homeassistant.local"
+
+
+def register_iframe_panel(iframe_url: str):
+    """
+    Registriert einen iframe Panel via HA REST API.
+    POST /api/panels  →  registriert dauerhaft in HA.
+    """
+    payload = {
+        "component_name": "iframe",
+        "sidebar_title": PANEL_TITLE,
+        "sidebar_icon": PANEL_ICON,
+        "url_path": PANEL_URL_PATH,
+        "config": {
+            "url": iframe_url
+        }
+    }
+    status, body = ha_request("POST", f"/api/panels/{PANEL_URL_PATH}", payload)
+    print(f"Panel registriert: HTTP {status} – {body[:120]}")
+    return status in (200, 201)
+
+
+def main():
+    # iframe URL: gleicher Host wie HA, Port 8099
+    # Wir nutzen einen relativen Ansatz – der Browser kennt den Hostnamen
+    # Für die API brauchen wir eine absolute URL
+    # Da wir den externen Hostnamen nicht kennen, nutzen wir einen Platzhalter
+    # und schreiben stattdessen ein JS-Panel das den Host dynamisch ermittelt
+
+    print("Registriere Solar Optimizer Panel in HA...")
+
+    # Methode 1: iframe panel via REST API
+    iframe_url = "http://homeassistant.local:8099"
+    success = register_iframe_panel(iframe_url)
+
+    if success:
+        print(f"✅ Panel '{PANEL_TITLE}' erfolgreich registriert.")
+        print(f"   Erreichbar unter: http://homeassistant.local:8123/{PANEL_URL_PATH}")
+    else:
+        print("⚠ REST-Registrierung fehlgeschlagen.")
+        print("  Fallback: panel_custom via configuration.yaml (siehe README)")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

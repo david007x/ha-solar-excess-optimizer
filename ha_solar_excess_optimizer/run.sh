@@ -4,20 +4,17 @@ export HA_TOKEN="${SUPERVISOR_TOKEN}"
 export HA_URL="http://supervisor/core"
 export LOG_LEVEL=$(bashio::config 'log_level')
 
-bashio::log.info "HA Solar Excess Optimizer startet..."
+bashio::log.info "HA Solar Excess Optimizer v4 startet..."
 
-# ── Panel HTML in /config/www kopieren ───────────────────────────────────────
-mkdir -p /config/www
-if cp /panel/solar_excess_optimizer.html /config/www/solar_excess_optimizer.html 2>/dev/null; then
-    bashio::log.info "Panel HTML nach /config/www kopiert."
-else
-    bashio::log.warning "Konnte Panel HTML nicht kopieren (Pfad: /panel/solar_excess_optimizer.html)"
-fi
+# ── Alten fehlerhaften panel_custom Eintrag aus configuration.yaml entfernen ─
+python3 /app/cleanup_panel.py && \
+    bashio::log.info "panel_custom Einträge bereinigt." || true
 
-# ── panel_custom in configuration.yaml eintragen ─────────────────────────────
+# ── iframe Panel via HA REST API registrieren ─────────────────────────────────
+bashio::log.info "Registriere iframe Panel in HA Sidebar..."
 python3 /app/register_panel.py && \
-    bashio::log.info "Panel in configuration.yaml eingetragen." || \
-    bashio::log.warning "Panel-Registrierung fehlgeschlagen – siehe Log."
+    bashio::log.info "Panel erfolgreich registriert." || \
+    bashio::log.warning "Panel-Registrierung fehlgeschlagen – Add-on manuell neu starten."
 
 # ── Python App starten ────────────────────────────────────────────────────────
 python3 /app/main.py
