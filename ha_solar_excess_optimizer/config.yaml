@@ -1,0 +1,81 @@
+name: "HA Solar Excess Optimizer"
+description: "Modulare PV-Überschussregelung – Wallbox, Heizstab, Steckdosen & mehr"
+version: "2.0.0"
+slug: "ha_solar_excess_optimizer"
+init: false
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+homeassistant_api: true
+
+options:
+  grid_power_entity: "sensor.grid_power"
+  update_interval_sec: 10
+  hysteresis_w: 150
+  log_level: "info"
+  devices:
+    - name: "Wallbox"
+      type: "variable"
+      priority: 1
+      enabled: true
+      switch_entity: "switch.wallbox"
+      power_entity: "number.wallbox_current_ampere"
+      power_min: 1400
+      power_max: 11000
+      power_step: 230
+      ramp_interval_sec: 30
+    - name: "Heizstab"
+      type: "stepped"
+      priority: 2
+      enabled: true
+      steps:
+        - switch_entity: "switch.heizstab_stufe1"
+          power_w: 1000
+        - switch_entity: "switch.heizstab_stufe2"
+          power_w: 2000
+        - switch_entity: "switch.heizstab_stufe3"
+          power_w: 3000
+    - name: "Gefrierschrank"
+      type: "switch"
+      priority: 3
+      enabled: true
+      switch_entity: "switch.steckdose_gefrier"
+      power_w: 150
+    - name: "Waschmaschine"
+      type: "timed"
+      priority: 4
+      enabled: true
+      switch_entity: "switch.steckdose_waschmaschine"
+      power_w: 2000
+      min_runtime_minutes: 90
+
+schema:
+  grid_power_entity: str
+  update_interval_sec: int
+  hysteresis_w: int
+  log_level: list(debug|info|warning|error)
+  devices:
+    - name: str
+      type: list(switch|stepped|variable|timed)
+      priority: int
+      enabled: bool
+      switch_entity: str?
+      power_entity: str?
+      power_w: int?
+      power_min: int?
+      power_max: int?
+      power_step: int?
+      ramp_interval_sec: int?
+      min_runtime_minutes: int?
+      steps:
+        - switch_entity: str
+          power_w: int
+
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: "HA Solar Excess Optimizer Web UI"
+map:
+  - config:rw
