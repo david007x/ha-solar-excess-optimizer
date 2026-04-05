@@ -1,0 +1,98 @@
+# ============================================================
+# HA Solar Excess Optimizer – Template Sensoren
+# ============================================================
+# Diese Datei in deine configuration.yaml einbinden:
+#   homeassistant:
+#     packages:
+#       solar_excess: !include packages/solar_excess_optimizer.yaml
+#
+# ODER den Inhalt direkt in configuration.yaml kopieren.
+#
+# Voraussetzung: Das Add-on läuft und ist unter Port 8099 erreichbar.
+# Die REST-Sensoren fragen alle 10s den Add-on Status ab.
+# ============================================================
+
+# ─── REST Sensor (holt JSON vom Add-on) ──────────────────────
+rest:
+  - resource: "http://localhost:8099/api/status"
+    scan_interval: 10
+    sensor:
+      - name: "SEO Überschuss"
+        unique_id: seo_surplus_w
+        value_template: "{{ value_json.surplus_w }}"
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:solar-power
+
+      - name: "SEO Verbleibend"
+        unique_id: seo_remaining_w
+        value_template: "{{ value_json.remaining_w }}"
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:transmission-tower
+
+      - name: "SEO Aktive Geräte"
+        unique_id: seo_active_devices
+        value_template: >
+          {{ value_json.devices | selectattr('active','eq',true) | list | count }}
+        icon: mdi:devices
+
+      - name: "SEO Gesamtverbrauch"
+        unique_id: seo_total_consumption_w
+        value_template: >
+          {{ value_json.devices | map(attribute='power_w') | map('int',0) | sum }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:lightning-bolt
+
+      # Pro-Gerät Sensoren (Index 0–7, passe Namen nach deinen Geräten an)
+      - name: "SEO Gerät 1 Leistung"
+        unique_id: seo_device_0_power
+        value_template: "{{ value_json.devices[0].power_w | default(0) }}"
+        unit_of_measurement: "W"
+        device_class: power
+
+      - name: "SEO Gerät 2 Leistung"
+        unique_id: seo_device_1_power
+        value_template: "{{ value_json.devices[1].power_w | default(0) }}"
+        unit_of_measurement: "W"
+        device_class: power
+
+      - name: "SEO Gerät 3 Leistung"
+        unique_id: seo_device_2_power
+        value_template: "{{ value_json.devices[2].power_w | default(0) }}"
+        unit_of_measurement: "W"
+        device_class: power
+
+      - name: "SEO Gerät 4 Leistung"
+        unique_id: seo_device_3_power
+        value_template: "{{ value_json.devices[3].power_w | default(0) }}"
+        unit_of_measurement: "W"
+        device_class: power
+
+  # Gerätestatus (aktiv/inaktiv als binary_sensor via Template)
+  - resource: "http://localhost:8099/api/status"
+    scan_interval: 10
+    binary_sensor:
+      - name: "SEO Gerät 1 Aktiv"
+        unique_id: seo_device_0_active
+        value_template: "{{ value_json.devices[0].active | default(false) }}"
+        device_class: running
+
+      - name: "SEO Gerät 2 Aktiv"
+        unique_id: seo_device_1_active
+        value_template: "{{ value_json.devices[1].active | default(false) }}"
+        device_class: running
+
+      - name: "SEO Gerät 3 Aktiv"
+        unique_id: seo_device_2_active
+        value_template: "{{ value_json.devices[2].active | default(false) }}"
+        device_class: running
+
+      - name: "SEO Gerät 4 Aktiv"
+        unique_id: seo_device_3_active
+        value_template: "{{ value_json.devices[3].active | default(false) }}"
+        device_class: running

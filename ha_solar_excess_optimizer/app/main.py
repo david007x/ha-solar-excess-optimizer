@@ -4,6 +4,7 @@ import logging
 import config as cfg_module
 from aiohttp import web
 from controller import SolarController
+import ha_publisher
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 _cfg = cfg_module.load()
@@ -151,6 +152,33 @@ HTML = r"""<!DOCTYPE html>
                   border-bottom: 1px solid var(--border); font-size: .65rem; text-transform: uppercase; letter-spacing: .07em; }
   .log-table td { padding: .45rem .75rem; border-bottom: 1px solid var(--border); }
   .log-table tr:last-child td { border-bottom: none; }
+
+  /* ENTITY PICKER */
+  .ep-wrap { position: relative; }
+  .ep-input-row { display: flex; gap: 6px; align-items: center; }
+  .ep-input { flex: 1; }
+  .ep-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+            color: var(--muted); font-size: .75rem; padding: .45rem .7rem; cursor: pointer;
+            white-space: nowrap; font-family: var(--mono); transition: all .2s; flex-shrink: 0; }
+  .ep-btn:hover { border-color: var(--grid); color: var(--text); }
+  .ep-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 999;
+                 background: var(--surface); border: 1px solid var(--grid); border-radius: 10px;
+                 max-height: 260px; overflow: hidden; display: flex; flex-direction: column;
+                 box-shadow: 0 8px 32px #000a; }
+  .ep-search { padding: .5rem .75rem; background: var(--surface2); border: none;
+               border-bottom: 1px solid var(--border); color: var(--text);
+               font-family: var(--mono); font-size: .78rem; outline: none; width: 100%; }
+  .ep-list { overflow-y: auto; flex: 1; }
+  .ep-item { padding: .45rem .75rem; cursor: pointer; font-size: .78rem;
+             font-family: var(--mono); border-bottom: 1px solid var(--border); display: flex;
+             justify-content: space-between; align-items: center; gap: .5rem; transition: background .15s; }
+  .ep-item:hover { background: var(--surface2); }
+  .ep-item:last-child { border-bottom: none; }
+  .ep-item-id { color: var(--text); }
+  .ep-item-meta { color: var(--muted); font-size: .68rem; white-space: nowrap; }
+  .ep-state { color: var(--solar); font-size: .68rem; white-space: nowrap; }
+  .ep-empty { padding: .75rem; color: var(--muted); font-size: .78rem; font-family: var(--mono); text-align: center; }
+  .ep-loading { padding: .75rem; color: var(--muted); font-size: .75rem; font-family: var(--mono); text-align: center; }
 </style>
 </head>
 <body>
@@ -164,6 +192,7 @@ HTML = r"""<!DOCTYPE html>
     <button class="tab active" onclick="showPage('dashboard')">Dashboard</button>
     <button class="tab" onclick="showPage('config')">Verbraucher</button>
     <button class="tab" onclick="showPage('log')">Log</button>
+    <button class="tab" onclick="showPage('hadash')">HA Dashboard</button>
   </div>
 </header>
 
@@ -189,7 +218,12 @@ HTML = r"""<!DOCTYPE html>
     <div class="form-row">
       <div class="form-group">
         <label>Netzleistung Entity</label>
-        <input id="cfg-grid-entity" placeholder="sensor.grid_power">
+        <div class="ep-wrap" id="ep-wrap-grid">
+          <div class="ep-input-row">
+            <input class="ep-input" id="cfg-grid-entity" placeholder="sensor.grid_power" autocomplete="off" readonly>
+            <button class="ep-btn" onclick="openPicker('ep-wrap-grid','cfg-grid-entity','sensor,input_number')">⌕ Suchen</button>
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label>Hysterese (W)</label>
@@ -245,7 +279,12 @@ HTML = r"""<!DOCTYPE html>
       <div class="form-row">
         <div class="form-group">
           <label>Switch Entity</label>
-          <input id="sw-entity" placeholder="switch.mein_geraet">
+          <div class="ep-wrap" id="ep-wrap-sw-entity">
+            <div class="ep-input-row">
+              <input class="ep-input" id="sw-entity" placeholder="switch.mein_geraet" autocomplete="off" readonly>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-sw-entity','sw-entity','switch')">⌕</button>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label>Leistung (W)</label>
@@ -265,11 +304,21 @@ HTML = r"""<!DOCTYPE html>
       <div class="form-row">
         <div class="form-group">
           <label>Switch Entity</label>
-          <input id="var-switch" placeholder="switch.wallbox">
+          <div class="ep-wrap" id="ep-wrap-var-switch">
+            <div class="ep-input-row">
+              <input class="ep-input" id="var-switch" placeholder="switch.wallbox" autocomplete="off" readonly>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-var-switch','var-switch','switch')">⌕</button>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label>Power Entity (number.*)</label>
-          <input id="var-power-entity" placeholder="number.wallbox_current_ampere">
+          <div class="ep-wrap" id="ep-wrap-var-power-entity">
+            <div class="ep-input-row">
+              <input class="ep-input" id="var-power-entity" placeholder="number.wallbox_current_ampere" autocomplete="off" readonly>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-var-power-entity','var-power-entity','number')">⌕</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="form-row">
@@ -299,7 +348,12 @@ HTML = r"""<!DOCTYPE html>
       <div class="form-row">
         <div class="form-group">
           <label>Switch Entity</label>
-          <input id="tim-entity" placeholder="switch.waschmaschine">
+          <div class="ep-wrap" id="ep-wrap-tim-entity">
+            <div class="ep-input-row">
+              <input class="ep-input" id="tim-entity" placeholder="switch.waschmaschine" autocomplete="off" readonly>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-tim-entity','tim-entity','switch')">⌕</button>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label>Leistung (W)</label>
@@ -333,6 +387,67 @@ HTML = r"""<!DOCTYPE html>
       <thead><tr><th>#</th><th>Überschuss</th><th>Verbleibend</th><th>Geräte</th></tr></thead>
       <tbody id="log-tbody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- HA DASHBOARD -->
+<div id="page-hadash" class="page">
+  <div class="config-card">
+    <div class="config-title">// HA DASHBOARD SETUP</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.7">
+      Lade die Dateien herunter und folge der Anleitung um das native HA Dashboard einzurichten.
+      Das Dashboard enthält: Live-Status Tab, Konfiguration (iframe) Tab und Statistiken Tab.
+    </p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem">
+      <div class="config-card" style="margin:0;border-color:var(--solar)">
+        <div style="font-size:.7rem;font-family:var(--mono);color:var(--solar);margin-bottom:.5rem">STEP 1</div>
+        <div style="font-weight:700;margin-bottom:.35rem">REST Sensoren</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;line-height:1.6">
+          Macht Add-on Daten als HA Entities verfügbar (Verlauf, Automationen, Energie-Dashboard).
+        </div>
+        <a href="/api/dashboard/solar_excess_optimizer.yaml" download>
+          <button class="btn btn-primary" style="width:100%">⬇ solar_excess_optimizer.yaml</button>
+        </a>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:.4rem;font-family:var(--mono)">
+          → nach /config/packages/ kopieren
+        </div>
+      </div>
+
+      <div class="config-card" style="margin:0;border-color:var(--grid)">
+        <div style="font-size:.7rem;font-family:var(--mono);color:var(--grid);margin-bottom:.5rem">STEP 2</div>
+        <div style="font-weight:700;margin-bottom:.35rem">Lovelace Dashboard</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem;line-height:1.6">
+          Dashboard YAML mit 3 Tabs: Live-Status, Konfiguration (iframe), Statistiken.
+        </div>
+        <a href="/api/dashboard/lovelace_dashboard.yaml" download>
+          <button class="btn btn-primary" style="width:100%">⬇ lovelace_dashboard.yaml</button>
+        </a>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:.4rem;font-family:var(--mono)">
+          → in HA Rohen Konfigurationseditor einfügen
+        </div>
+      </div>
+    </div>
+
+    <div class="config-card" style="margin:0;border-color:var(--green)">
+      <div style="font-size:.7rem;font-family:var(--mono);color:var(--green);margin-bottom:.5rem">ANLEITUNG</div>
+      <div style="font-weight:700;margin-bottom:.75rem">Setup-Schritte</div>
+      <ol style="font-size:.82rem;color:var(--muted);line-height:2;padding-left:1.25rem">
+        <li>Ordner <code style="background:var(--surface2);padding:1px 6px;border-radius:4px">/config/packages/</code> erstellen (falls nicht vorhanden)</li>
+        <li><code style="background:var(--surface2);padding:1px 6px;border-radius:4px">solar_excess_optimizer.yaml</code> dort ablegen</li>
+        <li>In <code style="background:var(--surface2);padding:1px 6px;border-radius:4px">configuration.yaml</code> eintragen:<br>
+          <code style="background:var(--surface2);padding:3px 8px;border-radius:4px;display:inline-block;margin-top:4px">homeassistant:<br>&nbsp;&nbsp;packages:<br>&nbsp;&nbsp;&nbsp;&nbsp;solar_excess: !include packages/solar_excess_optimizer.yaml</code>
+        </li>
+        <li>HA neu starten</li>
+        <li>Neues Dashboard anlegen → Rohen Konfigurationseditor → <code style="background:var(--surface2);padding:1px 6px;border-radius:4px">lovelace_dashboard.yaml</code> einfügen</li>
+        <li>Im Dashboard Tab "Konfiguration": URL auf deine HA IP anpassen:<br>
+          <code style="background:var(--surface2);padding:3px 8px;border-radius:4px;display:inline-block;margin-top:4px">url: "http://DEINE-HA-IP:8099"</code>
+        </li>
+      </ol>
+      <a href="/api/dashboard/SETUP.md" download style="display:inline-block;margin-top:1rem">
+        <button class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text)">📄 Vollständige Anleitung (SETUP.md)</button>
+      </a>
+    </div>
   </div>
 </div>
 
@@ -505,18 +620,26 @@ function selectType(el) {
 function addStepRow() {
   const id = Date.now();
   _stepRows.push(id);
+  const stepNum = _stepRows.length;
+  const wrapId = 'ep-wrap-step-' + id;
+  const inputId = 'step-sw-' + id;
   const row = document.createElement('div');
   row.id = 'step-' + id;
   row.className = 'form-row';
   row.style.marginBottom = '.5rem';
   row.innerHTML = `
     <div class="form-group">
-      <label>Switch Entity Stufe ${_stepRows.length}</label>
-      <input placeholder="switch.heizstab_stufe${_stepRows.length}">
+      <label>Switch Entity Stufe ${stepNum}</label>
+      <div class="ep-wrap" id="${wrapId}">
+        <div class="ep-input-row">
+          <input class="ep-input" id="${inputId}" placeholder="switch.heizstab_stufe${stepNum}" autocomplete="off" readonly>
+          <button class="ep-btn" onclick="openPicker('${wrapId}','${inputId}','switch')">⌕</button>
+        </div>
+      </div>
     </div>
     <div class="form-group">
       <label>Leistung (W)</label>
-      <input type="number" placeholder="${_stepRows.length * 1000}">
+      <input class="step-power-input" type="number" placeholder="${stepNum * 1000}">
     </div>`;
   document.getElementById('stepped-rows').appendChild(row);
 }
@@ -534,8 +657,9 @@ function addDevice() {
   } else if (_selectedType === 'stepped') {
     const rows = document.querySelectorAll('#stepped-rows .form-row');
     dev.steps = Array.from(rows).map(r => {
-      const inputs = r.querySelectorAll('input');
-      return { switch_entity: inputs[0].value, power_w: parseInt(inputs[1].value) || 0 };
+      const swInput = r.querySelector('.ep-input');
+      const pwInput = r.querySelector('.step-power-input');
+      return { switch_entity: swInput ? swInput.value : '', power_w: pwInput ? (parseInt(pwInput.value) || 0) : 0 };
     });
   } else if (_selectedType === 'variable') {
     dev.switch_entity = document.getElementById('var-switch').value;
@@ -562,6 +686,107 @@ function addDevice() {
 // Start
 refresh();
 setInterval(refresh, 10000);
+
+// ─── Entity Picker ────────────────────────────────────────────────────────────
+let _entities = null;   // cached after first load
+let _activePicker = null;
+
+async function loadEntities(domains) {
+  const qs = domains ? '?domain=' + domains : '';
+  const r = await fetch('/api/entities' + qs);
+  return await r.json();
+}
+
+async function openPicker(wrapId, inputId, domains) {
+  // Close any open picker
+  document.querySelectorAll('.ep-dropdown').forEach(d => d.remove());
+  _activePicker = null;
+
+  const wrap = document.getElementById(wrapId);
+  const inputEl = document.getElementById(inputId);
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'ep-dropdown';
+  dropdown.innerHTML = '<div class="ep-loading">⟳ Entities laden...</div>';
+  wrap.appendChild(dropdown);
+  _activePicker = { wrapId, inputId, dropdown };
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', _outsideClick, { once: true });
+  }, 10);
+
+  let entities;
+  try {
+    entities = await loadEntities(domains);
+  } catch(e) {
+    dropdown.innerHTML = '<div class="ep-empty">⚠ HA API nicht erreichbar</div>';
+    return;
+  }
+
+  renderDropdown(dropdown, inputEl, entities);
+}
+
+function renderDropdown(dropdown, inputEl, entities) {
+  dropdown.innerHTML = `
+    <input class="ep-search" placeholder="Suchen..." oninput="filterEntities(this)" autofocus>
+    <div class="ep-list" id="ep-list-inner"></div>`;
+  const list = dropdown.querySelector('#ep-list-inner');
+  renderEntityList(list, entities, inputEl, dropdown);
+
+  // Autofocus search
+  setTimeout(() => dropdown.querySelector('.ep-search')?.focus(), 30);
+  dropdown._allEntities = entities;
+  dropdown._inputEl = inputEl;
+}
+
+function filterEntities(searchEl) {
+  const q = searchEl.value.toLowerCase();
+  const dropdown = searchEl.closest('.ep-dropdown');
+  const filtered = dropdown._allEntities.filter(e =>
+    e.entity_id.toLowerCase().includes(q) ||
+    e.friendly_name.toLowerCase().includes(q)
+  );
+  const list = dropdown.querySelector('#ep-list-inner');
+  renderEntityList(list, filtered, dropdown._inputEl, dropdown);
+}
+
+function renderEntityList(list, entities, inputEl, dropdown) {
+  if (!entities.length) {
+    list.innerHTML = '<div class="ep-empty">Keine Entities gefunden</div>';
+    return;
+  }
+  list.innerHTML = entities.slice(0, 150).map(e => `
+    <div class="ep-item" onclick="selectEntity('${e.entity_id}', '${inputEl.id}')">
+      <div>
+        <div class="ep-item-id">${e.entity_id}</div>
+        <div class="ep-item-meta">${e.friendly_name !== e.entity_id ? e.friendly_name : ''}</div>
+      </div>
+      <span class="ep-state">${e.state}${e.unit ? ' ' + e.unit : ''}</span>
+    </div>`).join('');
+}
+
+function selectEntity(entityId, inputId) {
+  document.getElementById(inputId).value = entityId;
+  document.querySelectorAll('.ep-dropdown').forEach(d => d.remove());
+  _activePicker = null;
+}
+
+function _outsideClick(e) {
+  if (!e.target.closest('.ep-wrap')) {
+    document.querySelectorAll('.ep-dropdown').forEach(d => d.remove());
+    _activePicker = null;
+  }
+}
+
+// Also allow manual typing (remove readonly if user double-clicks)
+document.addEventListener('dblclick', e => {
+  if (e.target.classList.contains('ep-input')) {
+    e.target.removeAttribute('readonly');
+    e.target.focus();
+  }
+});
+
 </script>
 </body>
 </html>"""
@@ -570,7 +795,12 @@ setInterval(refresh, 10000);
 # ─── API Routes ───────────────────────────────────────────────────────────────
 
 async def handle_index(request):
-    return web.Response(text=HTML, content_type="text/html")
+    # Allow embedding in HA iframe (no X-Frame-Options restriction)
+    return web.Response(
+        text=HTML,
+        content_type="text/html",
+        headers={"X-Frame-Options": "SAMEORIGIN", "Content-Security-Policy": "frame-ancestors *"}
+    )
 
 
 async def handle_status(request):
@@ -611,12 +841,32 @@ async def control_loop(cfg: dict):
         try:
             result = await controller.run_cycle()
             _last_status = result
+            await ha_publisher.publish(result)
         except Exception as e:
             logger.error(f"Regelzyklus Fehler: {e}", exc_info=True)
         await asyncio.sleep(interval)
 
 
 # ─── Start ────────────────────────────────────────────────────────────────────
+
+async def handle_dashboard_file(request):
+    """Liefert Dashboard-Dateien (YAML, SETUP.md) zum Download."""
+    import os
+    filename = request.match_info["filename"]
+    # Security: nur erlaubte Dateien
+    allowed = {"lovelace_dashboard.yaml", "solar_excess_optimizer.yaml", "SETUP.md"}
+    if filename not in allowed:
+        return web.Response(status=404)
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.join(base, "ha_dashboard", filename)
+    if not os.path.exists(path):
+        return web.Response(status=404)
+    with open(path) as f:
+        text = f.read()
+    ct = "text/yaml" if filename.endswith(".yaml") else "text/markdown"
+    return web.Response(text=text, content_type=ct,
+                        headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
 
 async def main():
     global controller
@@ -628,6 +878,8 @@ async def main():
     app.router.add_get("/api/status", handle_status)
     app.router.add_get("/api/config", handle_get_config)
     app.router.add_post("/api/config", handle_post_config)
+    app.router.add_get("/api/entities", handle_entities)
+    app.router.add_get("/api/dashboard/{filename}", handle_dashboard_file)
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -639,3 +891,47 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+async def handle_entities(request):
+    """
+    Gibt alle HA Entities zurück, optional gefiltert nach ?domain=sensor,switch,number
+    Wird vom Web UI Entity-Picker genutzt.
+    """
+    domain_filter = request.rel_url.query.get("domain", "")
+    domains = [d.strip() for d in domain_filter.split(",") if d.strip()]
+    try:
+        import aiohttp as _aiohttp
+        import os as _os
+        ha_url = _os.environ.get("HA_URL", "http://supervisor/core")
+        ha_token = _os.environ.get("HA_TOKEN", "")
+        headers = {"Authorization": f"Bearer {ha_token}"}
+        async with _aiohttp.ClientSession() as session:
+            async with session.get(f"{ha_url}/api/states", headers=headers) as resp:
+                if resp.status != 200:
+                    return web.Response(status=502, text='{"error":"HA nicht erreichbar"}')
+                states = await resp.json()
+
+        entities = []
+        for s in states:
+            eid = s.get("entity_id", "")
+            dom = eid.split(".")[0]
+            if domains and dom not in domains:
+                continue
+            attrs = s.get("attributes", {})
+            entities.append({
+                "entity_id": eid,
+                "friendly_name": attrs.get("friendly_name", eid),
+                "state": s.get("state", ""),
+                "unit": attrs.get("unit_of_measurement", ""),
+                "domain": dom,
+            })
+
+        entities.sort(key=lambda e: e["entity_id"])
+        return web.Response(
+            text=json.dumps(entities, ensure_ascii=False),
+            content_type="application/json"
+        )
+    except Exception as e:
+        logger.error(f"handle_entities: {e}")
+        return web.Response(status=500, text=json.dumps({"error": str(e)}))

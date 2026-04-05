@@ -1,0 +1,140 @@
+##############################################################################
+# HA Solar Excess Optimizer – Lovelace Dashboard
+#
+# Installation:
+#   In HA: Einstellungen → Dashboards → Dashboard hinzufügen
+#   → "Aus YAML erstellen" → Inhalt dieser Datei einfügen
+#
+#   ODER in configuration.yaml:
+#     lovelace:
+#       dashboards:
+#         solar-optimizer:
+#           mode: yaml
+#           title: Solar Optimizer
+#           icon: mdi:solar-power
+#           filename: solar_excess_optimizer_dashboard.yaml
+#
+#   Entity-IDs weiter unten anpassen!
+##############################################################################
+
+title: "☀ Solar Excess Optimizer"
+views:
+
+  # ══════════════════════════════════════════════════════
+  # TAB 1 – Live Status (native Lovelace)
+  # ══════════════════════════════════════════════════════
+  - title: "Übersicht"
+    path: solar-overview
+    icon: mdi:solar-power-variant
+    cards:
+
+      # Energiefluss – Kennzahlen
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-template-card
+            primary: "PV Überschuss"
+            secondary: "{{ states('sensor.seo_surplus_w') | round(0) }} W"
+            icon: mdi:transmission-tower-export
+            icon_color: >-
+              {% if states('sensor.seo_surplus_w') | float(0) > 0 %}green{% else %}red{% endif %}
+
+          - type: custom:mushroom-template-card
+            primary: "Verbraucher"
+            secondary: "{{ states('sensor.seo_consuming_w') | round(0) }} W"
+            icon: mdi:lightning-bolt
+            icon_color: amber
+
+          - type: custom:mushroom-template-card
+            primary: "Verbleibend"
+            secondary: "{{ states('sensor.seo_remaining_w') | round(0) }} W"
+            icon: mdi:gauge
+            icon_color: blue
+
+      # Verlaufsdiagramm
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: "Überschuss & Verbrauch (letzte 2h)"
+        graph_span: 2h
+        series:
+          - entity: sensor.seo_surplus_w
+            name: Überschuss
+            color: "#f5c842"
+            type: area
+          - entity: sensor.seo_consuming_w
+            name: Verbraucher
+            color: "#2dde98"
+            type: line
+
+      # Gerätestatus – eine Karte pro Gerät
+      - type: custom:mushroom-template-card
+        primary: "Wallbox"
+        secondary: "{{ states('sensor.seo_device_wallbox_w') | round(0) }} W"
+        icon: mdi:ev-station
+        icon_color: >-
+          {% if states('switch.wallbox') == 'on' %}green{% else %}grey{% endif %}
+        tap_action:
+          action: more-info
+          entity: switch.wallbox              # ← anpassen
+
+      - type: custom:mushroom-template-card
+        primary: "Heizstab"
+        secondary: "{{ states('sensor.seo_device_heizstab_w') | round(0) }} W"
+        icon: mdi:water-boiler
+        icon_color: >-
+          {% if states('switch.heizstab_stufe1') == 'on' %}orange{% else %}grey{% endif %}
+
+      - type: custom:mushroom-template-card
+        primary: "Waschmaschine"
+        secondary: >-
+          {{ states('sensor.seo_device_waschmaschine_runtime') | round(0) }}
+          / {{ states('sensor.seo_device_waschmaschine_target') }} min
+        icon: mdi:washing-machine
+        icon_color: >-
+          {% if states('switch.steckdose_waschmaschine') == 'on' %}blue{% else %}grey{% endif %}
+
+  # ══════════════════════════════════════════════════════
+  # TAB 2 – Konfiguration (iframe → Web UI Port 8099)
+  # ══════════════════════════════════════════════════════
+  - title: "Konfiguration"
+    path: solar-config
+    icon: mdi:cog-outline
+    cards:
+      - type: iframe
+        url: "http://homeassistant.local:8099"
+        aspect_ratio: "100%"
+        style: |
+          ha-card { height: calc(100vh - 120px); min-height: 600px; }
+          iframe { height: 100% !important; border: none; border-radius: 12px; }
+
+  # ══════════════════════════════════════════════════════
+  # TAB 3 – Statistiken
+  # ══════════════════════════════════════════════════════
+  - title: "Statistiken"
+    path: solar-stats
+    icon: mdi:chart-bar
+    cards:
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: "Tagesüberschuss (letzte 7 Tage)"
+        graph_span: 7d
+        span:
+          start: day
+        series:
+          - entity: sensor.seo_surplus_w
+            name: Überschuss
+            color: "#f5c842"
+            type: column
+            group_by:
+              func: max
+              duration: 1d
+
+      - type: statistics-graph
+        title: "Verbrauch Ø (Woche)"
+        entities:
+          - sensor.seo_consuming_w
+        stat_types:
+          - mean
+          - max
+        period: week
