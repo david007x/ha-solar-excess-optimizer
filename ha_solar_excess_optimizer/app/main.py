@@ -711,6 +711,7 @@ function renderDeviceList() {
           <input type="checkbox" ${d.enabled ? 'checked' : ''} onchange="toggleDevice(${i},this.checked)">
           <span class="slider"></span>
         </label>
+        <button class="btn" style="padding:4px 10px;font-size:.65rem;background:var(--surface2);border:1px solid var(--border);color:var(--muted)" onclick="editDevice(${i})">✎</button>
         <button class="btn btn-danger" style="padding:4px 10px;font-size:.65rem" onclick="removeDevice(${i})">✕</button>
       </div>
     </div>`).join('');
@@ -732,6 +733,79 @@ function getPowerLabel(d) {
 
 function toggleDevice(i, val) { _localDevices[i].enabled = val; }
 function removeDevice(i) { _localDevices.splice(i, 1); renderDeviceList(); }
+
+function editDevice(i) {
+  const d = _localDevices[i];
+
+  // Open the add section
+  document.getElementById('add-device-section').classList.add('open');
+
+  // Fill common fields
+  document.getElementById('new-name').value = d.name;
+  document.getElementById('new-priority').value = d.priority;
+
+  // Select type pill
+  document.querySelectorAll('.type-pill').forEach(p => {
+    p.classList.toggle('selected', p.dataset.type === d.type);
+  });
+  _selectedType = d.type;
+  ['switch','stepped','variable','timed','battery','wallbox'].forEach(t =>
+    document.getElementById('fields-' + t).style.display = t === d.type ? 'block' : 'none');
+
+  // Fill type-specific fields
+  if (d.type === 'switch') {
+    document.getElementById('sw-entity').value = d.switch_entity || '';
+    document.getElementById('sw-power').value = d.power_w || '';
+  } else if (d.type === 'stepped') {
+    document.getElementById('stepped-rows').innerHTML = '';
+    _stepRows = [];
+    (d.steps || []).forEach(s => {
+      addStepRow();
+      const rows = document.querySelectorAll('#stepped-rows .form-row');
+      const last = rows[rows.length - 1];
+      last.querySelector('.ep-input').value = s.switch_entity || '';
+      last.querySelector('.step-power-input').value = s.power_w || '';
+    });
+  } else if (d.type === 'variable') {
+    document.getElementById('var-switch').value = d.switch_entity || '';
+    document.getElementById('var-power-entity').value = d.power_entity || '';
+    document.getElementById('var-min').value = d.power_min || 1400;
+    document.getElementById('var-max').value = d.power_max || 11000;
+    document.getElementById('var-step').value = d.power_step || 230;
+    document.getElementById('var-ramp').value = d.ramp_interval_sec || 30;
+  } else if (d.type === 'timed') {
+    document.getElementById('tim-entity').value = d.switch_entity || '';
+    document.getElementById('tim-power').value = d.power_w || '';
+    document.getElementById('tim-runtime').value = d.min_runtime_minutes || 90;
+  } else if (d.type === 'battery') {
+    document.getElementById('bat-soc-entity').value = d.soc_entity || '';
+    document.getElementById('bat-power-entity').value = d.power_entity || '';
+    document.getElementById('bat-target-soc').value = d.target_soc || 100;
+    document.getElementById('bat-max-power').value = d.max_charge_power_w || 5000;
+  } else if (d.type === 'wallbox') {
+    document.getElementById('wb-switch').value = d.switch_entity || '';
+    document.getElementById('wb-ampere').value = d.power_entity || '';
+    document.getElementById('wb-steps').value = (d.steps_a || '6,8,10,13,16');
+    document.getElementById('wb-voltage').value = d.voltage || 230;
+    document.getElementById('wb-cycle-delay').value = d.power_cycle_delay_sec || 3;
+    document.getElementById('wb-ramp-interval').value = d.ramp_interval_sec || 30;
+  }
+
+  // Fill advanced fields
+  document.getElementById('new-condition-entity').value = d.condition_entity || '';
+  document.getElementById('new-condition-states').value =
+    Array.isArray(d.condition_states) ? d.condition_states.join(',') : (d.condition_states || '');
+  document.getElementById('new-consumption-entity').value = d.consumption_entity || '';
+  document.getElementById('new-on-delay').value = d.on_delay_sec || 30;
+  document.getElementById('new-off-delay').value = d.off_delay_sec || 20;
+
+  // Remove old entry so addDevice() replaces it
+  _localDevices.splice(i, 1);
+  renderDeviceList();
+
+  // Scroll to form
+  document.getElementById('add-device-section').scrollIntoView({ behavior: 'smooth' });
+}
 
 async function saveConfig() {
   const cfg = {
