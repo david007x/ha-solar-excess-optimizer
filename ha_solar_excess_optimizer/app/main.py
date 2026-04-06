@@ -509,6 +509,12 @@ HTML = r"""<!DOCTYPE html>
             </div>
           </div>
         </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label>Erlaubte Zustände <span style="color:var(--muted);font-weight:400">(kommagetrennt – für Status-Sensoren, z.B. Wallbox)</span></label>
+            <input id="new-condition-states" type="text" placeholder="z.B. Verfügbar,Angeschlossen,Laden">
+          </div>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>On-Delay (sec)</label>
