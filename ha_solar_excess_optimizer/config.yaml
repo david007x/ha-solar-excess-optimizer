@@ -1,6 +1,6 @@
 name: "HA Solar Excess Optimizer"
 description: "Modulare PV-Überschussregelung – Wallbox, Heizstab, Steckdosen & mehr"
-version: "7.0.0"
+version: "8.0.0"
 slug: "ha_solar_excess_optimizer"
 init: false
 arch:

@@ -1,4 +1,4 @@
-# ☀️ HA Solar Excess Optimizer v7 – Home Assistant Add-on
+# ☀️ HA Solar Excess Optimizer v8 – Home Assistant Add-on
 
 Modulare PV-Überschussregelung mit 4 Gerätetypen, Web UI und YAML-Konfiguration.
 

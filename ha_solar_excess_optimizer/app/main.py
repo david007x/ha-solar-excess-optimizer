@@ -403,6 +403,40 @@ HTML = r"""<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- battery -->
+    <div id="fields-battery" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>SOC Entity</label>
+          <div class="ep-wrap" id="ep-wrap-bat-soc-entity">
+            <div class="ep-input-row">
+              <input class="ep-input" id="bat-soc-entity" placeholder="sensor.batterie_soc" autocomplete="off" readonly>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-bat-soc-entity','bat-soc-entity','sensor')">⌕</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Ladeleistung Entity <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+          <div class="ep-wrap" id="ep-wrap-bat-pwr-entity">
+            <div class="ep-input-row">
+              <input class="ep-input" id="bat-power-entity" placeholder="sensor.batterie_ladeleistung" autocomplete="off" readonly>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-bat-pwr-entity','bat-power-entity','sensor')">⌕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ziel-SOC (%)</label>
+          <input id="bat-target-soc" type="number" value="100" min="0" max="100">
+        </div>
+        <div class="form-group">
+          <label>Max. Ladeleistung (W)</label>
+          <input id="bat-max-power" type="number" value="5000">
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:.5rem;margin-top:.75rem">
       <button class="btn btn-success" onclick="addDevice()">Gerät speichern</button>
       <button class="btn" onclick="toggleAddDevice()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted)">Abbrechen</button>
