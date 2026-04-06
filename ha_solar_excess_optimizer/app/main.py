@@ -510,12 +510,16 @@ HTML = r"""<!DOCTYPE html>
             </div>
           </div>
           <div class="form-group">
-            <label>Consumption Entity <span style="color:var(--muted);font-weight:400">(actual power in W)</span></label>
+            <label>Consumption Entity <span style="color:var(--muted);font-weight:400">(tatsächliche Leistung)</span></label>
             <div class="ep-wrap" id="ep-wrap-consumption">
               <div class="ep-input-row">
-                <input class="ep-input" id="new-consumption-entity" placeholder="e.g. sensor.wallbox_power" autocomplete="off" readonly>
+                <input class="ep-input" id="new-consumption-entity" placeholder="z.B. sensor.wallbox_leistung" autocomplete="off" readonly>
+                <select class="unit-select" id="new-consumption-unit" title="Einheit">
+                  <option value="W">W</option>
+                  <option value="kW">kW</option>
+                </select>
                 <button class="ep-btn" onclick="openPicker('ep-wrap-consumption','new-consumption-entity','sensor')">⌕</button>
-              <button class="ep-clear" onclick="clearPicker('new-consumption-entity')" title="Löschen">✕</button>
+                <button class="ep-clear" onclick="clearPicker('new-consumption-entity')" title="Löschen">✕</button>
               </div>
             </div>
           </div>
