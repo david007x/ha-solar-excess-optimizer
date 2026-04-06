@@ -43,8 +43,20 @@ class SolarController:
         return await get_numeric_state(self.grid_entity)
 
     async def run_cycle(self) -> dict:
-        surplus   = await self.get_surplus_w()
-        available = surplus
+        surplus = await self.get_surplus_w()
+
+        # ── Brutto-Überschuss berechnen ───────────────────────────────────────
+        # Der Grid-Sensor ist ein NETTO-Wert: er zeigt den Überschuss BEREITS
+        # nach Abzug aller laufenden Verbraucher.
+        # Um korrekt zu regeln müssen wir den Brutto-Überschuss kennen:
+        # Brutto = Netto + Summe aller aktuell laufenden Geräteverbrauche
+        # So sieht jedes Gerät im Loop den vollen verfügbaren Überschuss
+        # BEVOR seine eigene Leistung abgezogen wird.
+        running_consumption = sum(
+            d._actual_consumption_w for d in self.devices if d._active
+        )
+        gross_surplus = surplus + running_consumption
+        available = gross_surplus
         results   = []
 
         for device in self.devices:
@@ -56,17 +68,23 @@ class SolarController:
                 "available_after_w": round(available),
             })
 
+        allocated = gross_surplus - available
+
         entry = {
             "surplus_w":   round(surplus, 1),
-            "remaining_w": round(available, 1),
+            "gross_surplus_w": round(gross_surplus, 1),
+            "remaining_w": round(surplus, 1),   # Anzeige = Netto-Grid (korrekt)
+            "allocated_w": round(allocated, 1),
             "devices":     results,
         }
         self.cycle_log.insert(0, entry)
         self.cycle_log = self.cycle_log[:30]
 
         return {
-            "surplus_w":   round(surplus, 1),
-            "remaining_w": round(available, 1),
-            "devices":     [d.status_dict() for d in self.devices],
-            "cycle_log":   self.cycle_log[:10],
+            "surplus_w":       round(surplus, 1),
+            "gross_surplus_w": round(gross_surplus, 1),
+            "remaining_w":     round(surplus, 1),
+            "allocated_w":     round(allocated, 1),
+            "devices":         [d.status_dict() for d in self.devices],
+            "cycle_log":       self.cycle_log[:10],
         }
