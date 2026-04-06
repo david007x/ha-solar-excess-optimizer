@@ -146,7 +146,12 @@ class WallboxDevice(BaseDevice):
 
         # Ausschalten wenn kein Überschuss für Mindeststufe
         if new_target == -1 and self._active:
-            if self._check_off_delay(True) and ramp_ready and self._min_runtime_ok():
+            _runtime_ok = True
+            if hasattr(self, '_min_runtime_ok'):
+                _runtime_ok = self._min_runtime_ok()
+            elif hasattr(self, '_active_since') and self._active_since > 0:
+                _runtime_ok = (time.time() - self._active_since) >= getattr(self, 'min_runtime_sec', 60)
+            if self._check_off_delay(True) and ramp_ready and _runtime_ok:
                 asyncio.ensure_future(self._shutdown_wallbox())
                 self._off_condition_since = None
             return await self.read_consumption(
