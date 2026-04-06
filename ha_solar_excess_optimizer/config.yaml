@@ -89,6 +89,7 @@ schema:
       on_delay_sec: int?
       off_delay_sec: int?
       condition_entity: str?
+      condition_states: str?
       consumption_entity: str?
       soc_entity: str?
       target_soc: int?

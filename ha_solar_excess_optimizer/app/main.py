@@ -710,6 +710,12 @@ function renderDeviceList() {
     </div>`).join('');
 }
 
+function getConditionLabel(d) {
+  if (!d.condition_entity) return '';
+  const states = d.condition_states && d.condition_states.length
+    ? ` [${d.condition_states.join(',')}]` : '';
+  return ` · ⚡${d.condition_entity.split('.')[1]}${states}`;
+}
 function getPowerLabel(d) {
   if (d.type === 'battery') return `SOC → ${d.target_soc || 100}%`;
   if (d.type === 'wallbox') return (d.steps||[]).map(s=>s.ampere+'A').join('/');
@@ -823,10 +829,12 @@ function addDevice() {
   _localDevices.push(dev);
   // Gemeinsame optionale Felder
   const condEnt = document.getElementById('new-condition-entity').value;
+  const condStates = document.getElementById('new-condition-states').value;
   const consEnt = document.getElementById('new-consumption-entity').value;
   const onDelay = parseInt(document.getElementById('new-on-delay').value);
   const offDelay = parseInt(document.getElementById('new-off-delay').value);
   if (condEnt) dev.condition_entity = condEnt;
+  if (condStates) dev.condition_states = condStates;
   if (consEnt) dev.consumption_entity = consEnt;
   if (onDelay !== 30) dev.on_delay_sec = onDelay;
   if (offDelay !== 20) dev.off_delay_sec = offDelay;
@@ -839,6 +847,7 @@ function addDevice() {
   document.getElementById('bat-soc-entity').value = '';
   document.getElementById('bat-power-entity').value = '';
   document.getElementById('new-condition-entity').value = '';
+  document.getElementById('new-condition-states').value = '';
   document.getElementById('new-consumption-entity').value = '';
 }
 

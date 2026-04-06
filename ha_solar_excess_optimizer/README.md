@@ -132,6 +132,7 @@ Geräte mit niedrigerer Priorität bekommen nur den verbleibenden Rest.
 | Feld | Beschreibung |
 |---|---|
 | `condition_entity` | Gerät nur aktivieren wenn Entity = `on` / `true` / `> 0` |
+| `condition_states` | Kommagetrennte Liste erlaubter Zustände für Status-Sensoren (z.B. `"Verfügbar,Angeschlossen"`) |
 | `consumption_entity` | Tatsächliche Leistung aus HA lesen statt Schätzwert nutzen |
 | `on_delay_sec` | Sekunden Überschuss stabil sein muss vor dem Einschalten (Standard: 30) |
 | `off_delay_sec` | Sekunden Defizit stabil sein muss vor dem Ausschalten (Standard: 20) |
