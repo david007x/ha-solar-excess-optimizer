@@ -121,11 +121,19 @@ class WallboxDevice(BaseDevice):
         if self._condition_blocked:
             if self._active:
                 asyncio.ensure_future(self._shutdown_wallbox())
-                self.log(f"AUS – Bedingung nicht erfüllt ({self.condition_entity})")
+            self.log(f"⛔ Bedingung nicht erfüllt: {self.condition_entity}")
             return 0
+        else:
+            if self.condition_entity:
+                self.log(f"✅ Bedingung OK: {self.condition_entity}")
 
         # Ziel-Stufe berechnen
         new_target = self._watts_to_step(surplus_w)
+        min_w = self._steps[0][1] if self._steps else 0
+        self.log(
+            f"Zyklus │ Überschuss: {surplus_w:.0f}W │ Aktiv: {self._active} │ "
+            f"Ziel-Stufe: {new_target} │ Min: {min_w}W+{self.hysteresis_w}W Hysterese"
+        )
 
         # Ausschalten wenn kein Überschuss für Mindeststufe
         if new_target == -1 and self._active:
@@ -140,7 +148,12 @@ class WallboxDevice(BaseDevice):
 
         # Einschalten wenn genug Überschuss
         if not self._active and new_target >= 0:
-            if self._check_on_delay(True) and ramp_ready:
+            ready = self._check_on_delay(True)
+            self.log(
+                f"⏳ Einschalt-Timer: {self._on_timer_progress()}% │ "
+                f"Timer-bereit: {ready} │ Ramp-bereit: {ramp_ready}"
+            )
+            if ready and ramp_ready:
                 self._on_condition_since = None
                 asyncio.ensure_future(self._power_cycle_and_set(new_target))
             return 0
