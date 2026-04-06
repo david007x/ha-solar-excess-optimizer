@@ -28,7 +28,12 @@ async def get_state(entity_id: str) -> dict | None:
 async def get_numeric_state(entity_id: str) -> float:
     state = await get_state(entity_id)
     try:
-        return float(state["state"]) if state else 0.0
+        if not state:
+            return 0.0
+        raw = str(state["state"]).strip()
+        # Europäisches Komma als Dezimaltrennzeichen behandeln (z.B. "1,2" → "1.2")
+        raw = raw.replace(",", ".")
+        return float(raw)
     except (ValueError, KeyError):
         return 0.0
 
