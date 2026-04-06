@@ -940,7 +940,7 @@ function addDevice() {
   if (condStates) dev.condition_states = condStates;
   if (consEnt) dev.consumption_entity = consEnt;
   const consUnit = document.getElementById('new-consumption-unit').value;
-  if (consUnit && consUnit !== 'W') dev.consumption_unit = consUnit;
+  if (consUnit) dev.consumption_unit = consUnit;  // immer speichern
   if (onDelay !== 30) dev.on_delay_sec = onDelay;
   if (offDelay !== 20) dev.off_delay_sec = offDelay;
   const minRuntime = parseInt(document.getElementById('new-min-runtime').value);
