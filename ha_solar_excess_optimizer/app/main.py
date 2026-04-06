@@ -437,6 +437,43 @@ HTML = r"""<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Gemeinsame optionale Felder für alle Typen -->
+    <details style="margin-bottom:.75rem">
+      <summary style="font-family:var(--mono);font-size:.7rem;color:var(--muted);cursor:pointer;text-transform:uppercase;letter-spacing:.05em">⚙ Erweitert (optional)</summary>
+      <div style="margin-top:.75rem">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Bedingung Entity <span style="color:var(--muted);font-weight:400">(nur aktiv wenn 'on')</span></label>
+            <div class="ep-wrap" id="ep-wrap-condition">
+              <div class="ep-input-row">
+                <input class="ep-input" id="new-condition-entity" placeholder="z.B. binary_sensor.auto_verbunden" autocomplete="off" readonly>
+                <button class="ep-btn" onclick="openPicker('ep-wrap-condition','new-condition-entity','binary_sensor,input_boolean')">⌕</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Verbrauch Entity <span style="color:var(--muted);font-weight:400">(tatsächliche Leistung W)</span></label>
+            <div class="ep-wrap" id="ep-wrap-consumption">
+              <div class="ep-input-row">
+                <input class="ep-input" id="new-consumption-entity" placeholder="z.B. sensor.wallbox_leistung" autocomplete="off" readonly>
+                <button class="ep-btn" onclick="openPicker('ep-wrap-consumption','new-consumption-entity','sensor')">⌕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Einschalt-Verzögerung (Sek)</label>
+            <input id="new-on-delay" type="number" value="30" min="0">
+          </div>
+          <div class="form-group">
+            <label>Ausschalt-Verzögerung (Sek)</label>
+            <input id="new-off-delay" type="number" value="20" min="0">
+          </div>
+        </div>
+      </div>
+    </details>
+
     <div style="display:flex;gap:.5rem;margin-top:.75rem">
       <button class="btn btn-success" onclick="addDevice()">Gerät speichern</button>
       <button class="btn" onclick="toggleAddDevice()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted)">Abbrechen</button>
@@ -522,6 +559,8 @@ function renderDeviceCard(dev) {
   const badgeText = dev.forced ? '⚡ ZWANG' : (dev.active ? '● AN' : '○ AUS');
   const cardCls = dev.forced ? 'forced' : (dev.active ? 'on' : '');
   const ov = dev.override || 'auto';
+  const condBadge = dev.condition_entity && !dev.condition_ok
+    ? `<span class="device-badge badge-off" style="font-size:.58rem;margin-left:4px">⛔ Bedingung</span>` : '';
   let extra = '';
   // Timer bars
   if (dev.on_timer_pct > 0 && !dev.active) {
@@ -562,7 +601,7 @@ function renderDeviceCard(dev) {
     <div class="device-card ${cardCls}">
       <div class="device-top">
         <div>
-          <div class="device-name">${dev.name}</div>
+          <div class="device-name">${dev.name}${condBadge}</div>
           <div class="device-type">${dev.type} · P${dev.priority}</div>
         </div>
         <span class="device-badge ${badgeCls}">${badgeText}</span>
@@ -717,6 +756,16 @@ function addDevice() {
   }
 
   _localDevices.push(dev);
+  // Gemeinsame optionale Felder
+  const condEnt = document.getElementById('new-condition-entity').value;
+  const consEnt = document.getElementById('new-consumption-entity').value;
+  const onDelay = parseInt(document.getElementById('new-on-delay').value);
+  const offDelay = parseInt(document.getElementById('new-off-delay').value);
+  if (condEnt) dev.condition_entity = condEnt;
+  if (consEnt) dev.consumption_entity = consEnt;
+  if (onDelay !== 30) dev.on_delay_sec = onDelay;
+  if (offDelay !== 20) dev.off_delay_sec = offDelay;
+
   _localDevices.sort((a, b) => a.priority - b.priority);
   renderDeviceList();
   document.getElementById('add-device-section').classList.remove('open');
@@ -724,6 +773,8 @@ function addDevice() {
   document.getElementById('stepped-rows').innerHTML = '';
   document.getElementById('bat-soc-entity').value = '';
   document.getElementById('bat-power-entity').value = '';
+  document.getElementById('new-condition-entity').value = '';
+  document.getElementById('new-consumption-entity').value = '';
 }
 
 // ─── Config API ───────────────────────────────────────────────────────────────
