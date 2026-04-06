@@ -214,6 +214,15 @@ HTML = r"""<!DOCTYPE html>
     .btn { font-size: .7rem; padding: .5rem .9rem; }
     .ep-btn { font-size: .7rem; padding: .4rem .5rem; }
   }
+
+  /* ENTITY PICKER CLEAR BUTTON */
+  .ep-clear { background: transparent; border: none; color: var(--muted); cursor: pointer;
+              font-size: .85rem; padding: 0 4px; line-height: 1; flex-shrink: 0; }
+  .ep-clear:hover { color: var(--red); }
+  /* UNIT SELECTOR */
+  .unit-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+                 color: var(--muted); font-family: var(--mono); font-size: .75rem;
+                 padding: .45rem .5rem; cursor: pointer; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -496,6 +505,7 @@ HTML = r"""<!DOCTYPE html>
               <div class="ep-input-row">
                 <input class="ep-input" id="new-condition-entity" placeholder="z.B. sensor.wallbox_status" autocomplete="off" readonly>
                 <button class="ep-btn" onclick="openPicker('ep-wrap-condition','new-condition-entity','binary_sensor,input_boolean,sensor')">⌕</button>
+              <button class="ep-clear" onclick="clearPicker('new-condition-entity')" title="Löschen">✕</button>
               </div>
             </div>
           </div>
@@ -505,6 +515,7 @@ HTML = r"""<!DOCTYPE html>
               <div class="ep-input-row">
                 <input class="ep-input" id="new-consumption-entity" placeholder="e.g. sensor.wallbox_power" autocomplete="off" readonly>
                 <button class="ep-btn" onclick="openPicker('ep-wrap-consumption','new-consumption-entity','sensor')">⌕</button>
+              <button class="ep-clear" onclick="clearPicker('new-consumption-entity')" title="Löschen">✕</button>
               </div>
             </div>
           </div>
@@ -523,6 +534,12 @@ HTML = r"""<!DOCTYPE html>
           <div class="form-group">
             <label>Off-Delay (sec)</label>
             <input id="new-off-delay" type="number" value="20" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Mindestlaufzeit nach Einschalten (sec) <span style="color:var(--muted);font-weight:400">– verhindert Flapping</span></label>
+            <input id="new-min-runtime" type="number" value="60" min="0">
           </div>
         </div>
       </div>
@@ -796,8 +813,10 @@ function editDevice(i) {
   document.getElementById('new-condition-states').value =
     Array.isArray(d.condition_states) ? d.condition_states.join(',') : (d.condition_states || '');
   document.getElementById('new-consumption-entity').value = d.consumption_entity || '';
+  document.getElementById('new-consumption-unit').value = d.consumption_unit || 'W';
   document.getElementById('new-on-delay').value = d.on_delay_sec || 30;
   document.getElementById('new-off-delay').value = d.off_delay_sec || 20;
+  document.getElementById('new-min-runtime').value = d.min_runtime_sec || 60;
 
   // Remove old entry so addDevice() replaces it
   _localDevices.splice(i, 1);
@@ -916,8 +935,12 @@ function addDevice() {
   if (condEnt) dev.condition_entity = condEnt;
   if (condStates) dev.condition_states = condStates;
   if (consEnt) dev.consumption_entity = consEnt;
+  const consUnit = document.getElementById('new-consumption-unit').value;
+  if (consUnit && consUnit !== 'W') dev.consumption_unit = consUnit;
   if (onDelay !== 30) dev.on_delay_sec = onDelay;
   if (offDelay !== 20) dev.off_delay_sec = offDelay;
+  const minRuntime = parseInt(document.getElementById('new-min-runtime').value);
+  if (minRuntime !== 60) dev.min_runtime_sec = minRuntime;
 
   _localDevices.sort((a, b) => a.priority - b.priority);
   renderDeviceList();
@@ -928,7 +951,9 @@ function addDevice() {
   document.getElementById('bat-power-entity').value = '';
   document.getElementById('new-condition-entity').value = '';
   document.getElementById('new-condition-states').value = '';
+  document.getElementById('new-min-runtime').value = 60;
   document.getElementById('new-consumption-entity').value = '';
+  document.getElementById('new-consumption-unit').value = 'W';
 }
 
 // ─── Config API ───────────────────────────────────────────────────────────────
@@ -1036,6 +1061,17 @@ document.addEventListener('dblclick', e => {
   }
 });
 
+
+// ─── Entity Picker Clear ─────────────────────────────────────────────────────
+function clearPicker(inputId) {
+  const el = document.getElementById(inputId);
+  if (el) {
+    el.value = '';
+    el.removeAttribute('readonly');
+    el.focus();
+    el.setAttribute('readonly', true);
+  }
+}
 
 // ─── Override ─────────────────────────────────────────────────────────────────
 async function setOverride(deviceName, mode) {

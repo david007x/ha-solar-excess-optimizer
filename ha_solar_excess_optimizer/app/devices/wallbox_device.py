@@ -46,7 +46,11 @@ class WallboxDevice(BaseDevice):
         self._current_step: int  = -1   # Index in _steps, -1 = aus
         self._target_step: int   = -1
         self._last_change_time: float = 0
+        self._start_time: float  = 0     # Zeitpunkt des Einschaltens
         self._cycling: bool      = False  # True während Ein/Aus-Zyklus läuft
+        # Mindestlaufzeit nach dem Einschalten bevor ausgeschaltet werden darf
+        # Verhindert Flapping: Wallbox verbraucht Strom → Überschuss sinkt → sofort AUS
+        self.min_runtime_sec: int = cfg.get("min_runtime_sec", 120)
 
     def _watts_to_step(self, surplus_w: float) -> int:
         """Findet die höchste Stufe die der Überschuss deckt. -1 = keine."""
@@ -75,6 +79,8 @@ class WallboxDevice(BaseDevice):
             self._current_step = step
             self._active = True
             self._last_change_time = time.time()
+            if self._start_time == 0:
+                self._start_time = time.time()
             self.log(f"✅ Ladestrom gesetzt: {ampere}A = {watts}W")
         except Exception as e:
             self.log(f"❌ Zyklus-Fehler: {e}")
@@ -87,6 +93,7 @@ class WallboxDevice(BaseDevice):
             await turn_off(self.switch_entity)
             self._current_step = -1
             self._active = False
+            self._start_time = 0
             self._last_change_time = time.time()
             self.log("AUS")
         finally:
@@ -137,7 +144,15 @@ class WallboxDevice(BaseDevice):
 
         # Ausschalten wenn kein Überschuss für Mindeststufe
         if new_target == -1 and self._active:
-            if self._check_off_delay(True) and ramp_ready:
+            # Mindestlaufzeit prüfen – verhindert sofortiges AUS nach Einschalten
+            running_sec = time.time() - self._start_time if self._start_time > 0 else 0
+            min_ok = running_sec >= self.min_runtime_sec
+            if not min_ok:
+                self.log(
+                    f"⏱ Mindestlaufzeit: {running_sec:.0f}s / {self.min_runtime_sec}s – "
+                    f"noch nicht ausschalten"
+                )
+            if self._check_off_delay(True) and ramp_ready and min_ok:
                 asyncio.ensure_future(self._shutdown_wallbox())
                 self._off_condition_since = None
             return await self.read_consumption(
@@ -188,6 +203,8 @@ class WallboxDevice(BaseDevice):
             "total_steps": len(self._steps),
             "steps": [{"ampere": a, "watt": w} for a, w in self._steps],
             "cycling": self._cycling,
+            "runtime_sec": round(time.time() - self._start_time) if self._start_time > 0 else 0,
+            "min_runtime_sec": self.min_runtime_sec,
             "power_pct": round(self._current_step / max(1, len(self._steps) - 1) * 100)
                          if self._current_step >= 0 else 0,
         }

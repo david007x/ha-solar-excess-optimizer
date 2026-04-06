@@ -44,6 +44,10 @@ class BaseDevice(ABC):
         self._condition_blocked: bool = False
         self._actual_consumption_w: float = 0.0
 
+        # Mindestlaufzeit nach Einschalten (verhindert Flapping)
+        self.min_runtime_sec: int = cfg.get("min_runtime_sec", 60)
+        self._active_since: float = 0.0
+
     # ── Override ──────────────────────────────────────────────────────────────
 
     def set_override(self, mode: str):
