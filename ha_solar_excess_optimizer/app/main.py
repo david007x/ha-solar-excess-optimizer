@@ -306,6 +306,7 @@ HTML = r"""<!DOCTYPE html>
         <div class="type-pill" data-type="variable" onclick="selectType(this)">Variable</div>
         <div class="type-pill" data-type="timed" onclick="selectType(this)">Timed</div>
         <div class="type-pill" data-type="battery" onclick="selectType(this)">🔋 Battery</div>
+        <div class="type-pill" data-type="wallbox" onclick="selectType(this)">🔌 Wallbox</div>
       </div>
     </div>
 
