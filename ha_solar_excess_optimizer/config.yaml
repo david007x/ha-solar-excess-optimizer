@@ -93,7 +93,7 @@ schema:
       soc_entity: str?
       target_soc: int?
       max_charge_power_w: int?
-      steps_a: [int]?
+      steps_a: str?
       voltage: int?
       power_cycle_delay_sec: int?
       steps:

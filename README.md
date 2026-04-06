@@ -1,22 +1,43 @@
 # HA Solar Excess Optimizer
 
-Home Assistant Add-on repository for modular PV surplus control.
+Home Assistant Add-on Repository für modulare PV-Überschussregelung.
+
+Maintainer: [david007x](https://github.com/david007x)
 
 ## Installation
 
-1. [![Add Repository](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/david007x/ha-solar-excess-optimizer)
+1. [![Repository hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/david007x/ha-solar-excess-optimizer)
 
-   **Or manually:**
-   Settings → Add-ons → Add-on Store → ⋮ → Repositories → paste this URL
+   **Oder manuell:**
+   Einstellungen → Add-ons → Add-on Store → ⋮ → Repositories → diese URL einfügen:
+   ```
+   https://github.com/david007x/ha-solar-excess-optimizer
+   ```
 
-2. Search for „HA Solar Excess Optimizer" in the store and install
+2. „HA Solar Excess Optimizer" im Store suchen & installieren
+3. Add-on starten – Sidebar-Panel wird automatisch registriert
 
-## Add-ons in this repository
+## Features
 
-### ☀️ HA Solar Excess Optimizer
-Modular PV surplus control with 4 device types:
-- **Switch** – simple on/off
-- **Stepped** – multiple fixed power levels (e.g. heating rod 1/2/3 kW)
-- **Variable** – continuous control (e.g. wallbox via ampere)
-- **Timed** – minimum runtime per day
-- **Battery** – active charge power management
+- **6 Gerätetypen:** switch · stepped · variable · wallbox · timed · battery
+- **Priorisierung:** Überschuss wird nach Priorität auf Geräte verteilt
+- **Zeitbasierte Hysterese:** Flapping-Schutz via Ein-/Ausschaltverzögerung
+- **Manueller Override:** Gerät per Klick zwingen (AN / AUTO / AUS)
+- **condition_entity:** Gerät nur aktivieren wenn Bedingung erfüllt (z.B. Auto verbunden)
+- **consumption_entity:** Tatsächlichen Verbrauch aus HA lesen statt Schätzwert
+- **Entity-Picker:** Live-Suche aller HA-Entities im Web UI
+- **HA Sidebar Panel:** Automatische Registrierung beim Add-on-Start
+- **Mobile UI:** Responsives Dashboard für Smartphone und Tablet
+
+## Add-ons in diesem Repository
+
+### ☀️ HA Solar Excess Optimizer v0.1.1
+
+| Gerätetyp | Beschreibung | Beispiel |
+|---|---|---|
+| `switch` | Einfaches An/Aus | Smarte Steckdose, Relais |
+| `stepped` | Mehrere fixe Leistungsstufen | Heizstab 1/2/3 kW |
+| `variable` | Stufenlose Regelung via `number.*` | Wallbox (Ampere) |
+| `wallbox` | Portable Wallbox mit fixen Ladestufen + Ein/Aus-Zyklus | 6/8/10/13/16A Wallbox |
+| `timed` | Mindestlaufzeit pro Tag | Waschmaschine |
+| `battery` | Aktive Ladeleistungsreservierung | Hausbatterie |

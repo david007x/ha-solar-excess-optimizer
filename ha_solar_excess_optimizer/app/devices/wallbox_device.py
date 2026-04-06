@@ -32,7 +32,12 @@ class WallboxDevice(BaseDevice):
         self.ramp_interval: int  = cfg.get("ramp_interval_sec", 30)
 
         # Ladestufen: aus Config oder Standard 6/8/10/13/16A
-        steps_a = cfg.get("steps_a", DEFAULT_STEPS_A)
+        # Akzeptiert Liste [6,8,10] oder String "6,8,10" (HA Supervisor kompatibel)
+        raw = cfg.get("steps_a", DEFAULT_STEPS_A)
+        if isinstance(raw, str):
+            steps_a = [int(x.strip()) for x in raw.split(",") if x.strip().isdigit()]
+        else:
+            steps_a = list(raw) if raw else DEFAULT_STEPS_A
         # Sortiert, als (ampere, watt) Paare
         self._steps: list[tuple[int, int]] = sorted(
             [(a, a * self.voltage) for a in steps_a]
