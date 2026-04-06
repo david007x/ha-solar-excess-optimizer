@@ -317,7 +317,7 @@ HTML = r"""<!DOCTYPE html>
           <div class="ep-wrap" id="ep-wrap-sw-entity">
             <div class="ep-input-row">
               <input class="ep-input" id="sw-entity" placeholder="switch.mein_geraet" autocomplete="off" readonly>
-              <button class="ep-btn" onclick="openPicker('ep-wrap-sw-entity','sw-entity','switch')">⌕</button>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-sw-entity','sw-entity','switch,input_boolean,light,fan,climate,script,automation,scene')">⌕</button>
             </div>
           </div>
         </div>
@@ -342,7 +342,7 @@ HTML = r"""<!DOCTYPE html>
           <div class="ep-wrap" id="ep-wrap-var-switch">
             <div class="ep-input-row">
               <input class="ep-input" id="var-switch" placeholder="switch.wallbox" autocomplete="off" readonly>
-              <button class="ep-btn" onclick="openPicker('ep-wrap-var-switch','var-switch','switch')">⌕</button>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-var-switch','var-switch','switch,input_boolean,light,fan,climate,script,automation,scene')">⌕</button>
             </div>
           </div>
         </div>
@@ -386,7 +386,7 @@ HTML = r"""<!DOCTYPE html>
           <div class="ep-wrap" id="ep-wrap-tim-entity">
             <div class="ep-input-row">
               <input class="ep-input" id="tim-entity" placeholder="switch.waschmaschine" autocomplete="off" readonly>
-              <button class="ep-btn" onclick="openPicker('ep-wrap-tim-entity','tim-entity','switch')">⌕</button>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-tim-entity','tim-entity','switch,input_boolean,light,fan,climate,script,automation,scene')">⌕</button>
             </div>
           </div>
         </div>
@@ -709,7 +709,7 @@ function addStepRow() {
       <div class="ep-wrap" id="${wrapId}">
         <div class="ep-input-row">
           <input class="ep-input" id="${inputId}" placeholder="switch.heizstab_stufe${stepNum}" autocomplete="off" readonly>
-          <button class="ep-btn" onclick="openPicker('${wrapId}','${inputId}','switch')">⌕</button>
+          <button class="ep-btn" onclick="openPicker('${wrapId}','${inputId}','switch,input_boolean,light,fan,climate,script,automation,scene')">⌕</button>
         </div>
       </div>
     </div>
