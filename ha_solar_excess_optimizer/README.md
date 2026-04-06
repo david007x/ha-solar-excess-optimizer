@@ -1,67 +1,61 @@
-# ☀️ HA Solar Excess Optimizer v0.1.0 – Home Assistant Add-on
+# ☀️ HA Solar Excess Optimizer v0.1.1 – Home Assistant Add-on
 
-Modulare PV-Überschussregelung mit 4 Gerätetypen, Web UI und YAML-Konfiguration.
+Modular PV surplus control for wallbox, heating rod, smart plugs, and battery.
 
-## Gerätetypen
+## Device Types
 
-| Typ | Beschreibung | Beispiel |
+| Type | Description | Example |
 |---|---|---|
-| `switch` | Einfaches An/Aus | Steckdose, einfacher Heizstab |
-| `stepped` | Mehrere fixe Leistungsstufen | Heizstab 1/2/3 kW |
-| `variable` | Stufenlose Regelung via `number.*` | Wallbox (Ampere) |
-| `timed` | Mindestlaufzeit pro Tag | Waschmaschine, Spülmaschine |
+| `switch` | Simple on/off with hysteresis | Smart plug, simple relay |
+| `stepped` | Multiple fixed power levels | Heating rod 1/2/3 kW |
+| `variable` | Continuous control via `number.*` | Wallbox (ampere) |
+| `timed` | Minimum runtime per day | Washing machine, dishwasher |
+| `battery` | Active charge power reservation | Home battery |
 
 ## Installation
 
-1. GitHub Repo mit diesem Code erstellen
-2. In HA: **Einstellungen → Add-ons → Store → ⋮ → Repositories** → URL einfügen
-3. "HA Solar Excess Optimizer" installieren & starten
+1. Create a GitHub repository with this code
+2. In HA: **Settings → Add-ons → Store → ⋮ → Repositories** → paste URL
+3. Install "HA Solar Excess Optimizer" and start
 
-## Wichtigster Sensor: Netzleistung
+## Required Sensor: Grid Power
 
 ```yaml
-# configuration.yaml – falls kein direkter Sensor vorhanden
+# configuration.yaml – if no direct sensor available
 template:
   - sensor:
-      - name: "Netzleistung"
+      - name: "Grid Power"
         unit_of_measurement: "W"
-        # Positiv = Einspeisung (Überschuss) | Negativ = Bezug
+        # Positive = export (surplus) | Negative = import
         state: >
           {{ states('sensor.hoymiles_grid_export') | float(0)
            - states('sensor.hoymiles_grid_import') | float(0) }}
 ```
 
-## Konfiguration (config.yaml / Web UI)
+## Configuration
 
 ```yaml
-grid_power_entity: sensor.netzleistung   # Pflicht
+grid_power_entity: sensor.grid_power   # required
 hysteresis_w: 150
 update_interval_sec: 10
+on_delay_sec: 30
+off_delay_sec: 20
 
 devices:
-  # Typ 1: Switch
-  - name: "Gefrierschrank"
-    type: switch
-    priority: 3
+  # Battery (highest priority)
+  - name: "Home Battery"
+    type: battery
+    priority: 1
     enabled: true
-    switch_entity: switch.steckdose_gefrier
-    power_w: 150
+    soc_entity: sensor.battery_soc
+    power_entity: sensor.battery_charge_power   # optional
+    target_soc: 100
+    max_charge_power_w: 5000
 
-  # Typ 2: Stufen
-  - name: "Heizstab"
-    type: stepped
-    priority: 2
-    enabled: true
-    steps:
-      - switch_entity: switch.heizstab_stufe1
-        power_w: 1000
-      - switch_entity: switch.heizstab_stufe2
-        power_w: 2000
-
-  # Typ 3: Stufenlos (Wallbox)
+  # Wallbox (variable)
   - name: "Wallbox"
     type: variable
-    priority: 1
+    priority: 2
     enabled: true
     switch_entity: switch.wallbox
     power_entity: number.wallbox_current_ampere
@@ -69,61 +63,87 @@ devices:
     power_max: 11000
     power_step: 230
     ramp_interval_sec: 30
+    condition_entity: binary_sensor.car_connected   # optional
+    consumption_entity: sensor.wallbox_power        # optional
 
-  # Typ 4: Zeitgesteuert
-  - name: "Waschmaschine"
-    type: timed
+  # Heating rod (stepped)
+  - name: "Heating Rod"
+    type: stepped
+    priority: 3
+    enabled: true
+    steps:
+      - switch_entity: switch.heating_rod_level1
+        power_w: 1000
+      - switch_entity: switch.heating_rod_level2
+        power_w: 2000
+
+  # Smart plug (switch)
+  - name: "Freezer"
+    type: switch
     priority: 4
     enabled: true
-    switch_entity: switch.waschmaschine
+    switch_entity: switch.plug_freezer
+    power_w: 150
+
+  # Washing machine (timed)
+  - name: "Washing Machine"
+    type: timed
+    priority: 5
+    enabled: true
+    switch_entity: switch.plug_washing_machine
     power_w: 2000
     min_runtime_minutes: 90
 ```
 
+## Optional Device Fields (all types)
+
+| Field | Description |
+|---|---|
+| `condition_entity` | Only activate when entity = `on` / `true` / `> 0` |
+| `consumption_entity` | Read actual power from HA sensor instead of using estimate |
+| `on_delay_sec` | Seconds surplus must be stable before switching on |
+| `off_delay_sec` | Seconds deficit must be stable before switching off |
+
 ## Web UI (Port 8099)
 
-- **Dashboard**: Echtzeit-Übersicht aller Geräte
-- **Verbraucher**: Geräte hinzufügen/entfernen/deaktivieren ohne YAML-Edit
-- **Log**: Letzten Regelzyklen
-
-## Projektstruktur
-
-```
-app/
-├── main.py              # Web UI + Regelschleife
-├── controller.py        # Hauptregler
-├── config.py            # Laden/Speichern der Konfiguration
-├── ha_client.py         # HA REST API
-└── devices/
-    ├── base.py          # Abstrakte Basisklasse
-    ├── factory.py       # Geräte-Factory (Typ → Klasse)
-    ├── switch_device.py
-    ├── stepped_device.py
-    ├── variable_device.py
-    └── timed_device.py
-```
-
-Neuen Gerätetyp hinzufügen: neue Klasse in `devices/` erstellen,
-in `factory.py` registrieren – fertig.
+- **Dashboard** – real-time overview of all devices with manual override buttons
+- **Devices** – add/remove/disable devices with entity picker
+- **Log** – last control cycles
 
 ## HA Sidebar Panel
 
-Das Add-on registriert beim Start automatisch ein **Custom Panel** in der HA Sidebar
-unter dem Namen "Solar Optimizer" mit dem Icon ☀.
+The add-on automatically registers a **Custom Panel** in the HA sidebar on startup.
 
-### Manueller Fallback (falls automatisch nicht klappt)
+### Manual Fallback
 
-1. Panel HTML liegt nach Add-on-Start unter `/config/www/solar_excess_optimizer.html`
-2. Folgendes in `configuration.yaml` eintragen und HA neu starten:
+If automatic registration fails, add to `configuration.yaml` and restart HA:
 
 ```yaml
 panel_custom:
-  solar_excess_optimizer:
-    name: solar-optimizer-panel
+  - name: solar-optimizer-panel
     sidebar_title: Solar Optimizer
     sidebar_icon: mdi:solar-power
     url_path: solar-optimizer
-    module_url: /local/solar_excess_optimizer.html
+    module_url: /local/solar_optimizer_panel.js
 ```
 
-3. HA neu starten → "Solar Optimizer" erscheint in der Sidebar
+## Project Structure
+
+```
+app/
+├── main.py              # Web UI + control loop
+├── controller.py        # Main controller
+├── config.py            # Load/save configuration
+├── ha_client.py         # HA REST API
+├── register_panel.py    # Sidebar panel registration
+└── devices/
+    ├── base.py          # Abstract base class
+    ├── factory.py       # Device factory
+    ├── switch_device.py
+    ├── stepped_device.py
+    ├── variable_device.py
+    ├── timed_device.py
+    └── battery_device.py
+```
+
+To add a new device type: create a new class in `devices/`, register it in `factory.py`.

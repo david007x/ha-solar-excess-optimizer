@@ -1,7 +1,6 @@
 import logging
 from devices.factory import create_device
 from devices.base import BaseDevice, OVERRIDE_AUTO
-
 from ha_client import get_numeric_state
 
 logger = logging.getLogger(__name__)
@@ -17,18 +16,19 @@ class SolarController:
         self.devices: list[BaseDevice] = []
         for dev_cfg in cfg.get("devices", []):
             if not dev_cfg.get("enabled", True):
-                logger.info(f"'{dev_cfg['name']}' deaktiviert – übersprungen.")
+                logger.info(f"'{dev_cfg['name']}' disabled – skipping.")
                 continue
             try:
                 device = create_device(dev_cfg, hysteresis_w=self.hysteresis_w)
                 self.devices.append(device)
-                logger.info(f"[P{device.priority}] {device.name} ({device.device_type}) geladen")
+                logger.info(f"[P{device.priority}] {device.name} ({device.device_type}) loaded")
             except Exception as e:
-                logger.error(f"Fehler bei '{dev_cfg.get('name','?')}': {e}")
+                logger.error(f"Error loading '{dev_cfg.get('name','?')}': {e}")
 
         self.devices.sort(key=lambda d: d.priority)
 
     def reload(self, cfg: dict):
+        """Reload configuration, preserving manual overrides."""
         overrides = {d.name: d.override for d in self.devices}
         self.__init__(cfg)
         for d in self.devices:
@@ -39,6 +39,7 @@ class SolarController:
         return next((d for d in self.devices if d.name == name), None)
 
     async def get_surplus_w(self) -> float:
+        """Read grid power. Positive = export = surplus."""
         return await get_numeric_state(self.grid_entity)
 
     async def run_cycle(self) -> dict:

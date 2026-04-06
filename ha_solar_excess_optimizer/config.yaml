@@ -1,6 +1,6 @@
 name: "HA Solar Excess Optimizer"
-description: "Modulare PV-Überschussregelung – Wallbox, Heizstab, Steckdosen & mehr"
-version: "0.1.0"
+description: "Modular PV surplus control – wallbox, boiler, smart plugs & more"
+version: "0.1.1"
 slug: "ha_solar_excess_optimizer"
 init: false
 arch:
@@ -17,8 +17,8 @@ options:
   log_level: "info"
 
 
-  # Batterie-Beispiel (type: battery, einfach wie jedes andere Gerät hinzufügen):
-  # - name: "Hausbatterie"
+  # Battery example (type: battery, add just like any other device):
+  # - name: "Home Battery"
   #   type: battery
   #   priority: 1
   #   enabled: true
@@ -27,7 +27,7 @@ options:
   #   target_soc: 100
   #   max_charge_power_w: 5000
 
-  # Zeitbasierte Hysterese (Sekunden)
+  # Time-based hysteresis (seconds)
   on_delay_sec: 30
   off_delay_sec: 20
   devices:
@@ -41,7 +41,7 @@ options:
       power_max: 11000
       power_step: 230
       ramp_interval_sec: 30
-    - name: "Heizstab"
+    - name: "Heating Rod"
       type: "stepped"
       priority: 2
       enabled: true
@@ -52,13 +52,13 @@ options:
           power_w: 2000
         - switch_entity: "switch.heizstab_stufe3"
           power_w: 3000
-    - name: "Gefrierschrank"
+    - name: "Freezer"
       type: "switch"
       priority: 3
       enabled: true
       switch_entity: "switch.steckdose_gefrier"
       power_w: 150
-    - name: "Waschmaschine"
+    - name: "Washing Machine"
       type: "timed"
       priority: 4
       enabled: true
@@ -75,7 +75,7 @@ schema:
   off_delay_sec: int?
   devices:
     - name: str
-      type: list(switch|stepped|variable|timed|battery)
+      type: list(switch|stepped|variable|timed|battery|wallbox)
       priority: int
       enabled: bool
       switch_entity: str?
@@ -93,6 +93,9 @@ schema:
       soc_entity: str?
       target_soc: int?
       max_charge_power_w: int?
+      steps_a: [int]?
+      voltage: int?
+      power_cycle_delay_sec: int?
       steps:
         - switch_entity: str
           power_w: int

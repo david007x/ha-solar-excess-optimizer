@@ -1,7 +1,8 @@
 """
 register_panel.py
-Schreibt panel_custom (korrektes Listen-Format mit JS module_url) in configuration.yaml
-und triggert HA Core-Reload.
+1. Copies solar_optimizer_panel.js to /config/www/
+2. Writes panel_custom (correct list format with JS module_url) to configuration.yaml
+3. Triggers HA core reload
 """
 import os, re, sys, shutil, urllib.request, urllib.error
 
@@ -11,7 +12,6 @@ CONFIG_PATH = "/config/configuration.yaml"
 JS_SRC      = "/panel/solar_optimizer_panel.js"
 JS_DEST     = "/config/www/solar_optimizer_panel.js"
 
-# Korrektes HA Listen-Format – name muss mit customElements.define() übereinstimmen
 PANEL_BLOCK = """
 # >>> HA Solar Excess Optimizer Panel <<<
 panel_custom:
@@ -20,50 +20,51 @@ panel_custom:
     sidebar_icon: mdi:solar-power
     url_path: solar-optimizer
     module_url: /local/solar_optimizer_panel.js
-# <<< HA Solar Excess Optimizer Panel Ende >>>
+# <<< HA Solar Excess Optimizer Panel End >>>
 """
+
 
 def copy_js():
     os.makedirs("/config/www", exist_ok=True)
     if os.path.exists(JS_SRC):
         shutil.copy2(JS_SRC, JS_DEST)
-        print(f"✅ JS Panel nach {JS_DEST} kopiert.")
+        print(f"✅ JS panel copied to {JS_DEST}")
     else:
-        print(f"❌ JS Datei nicht gefunden: {JS_SRC}")
+        print(f"❌ JS file not found: {JS_SRC}")
         sys.exit(1)
+
 
 def read_config():
     if not os.path.exists(CONFIG_PATH):
-        print(f"❌ {CONFIG_PATH} nicht gefunden.")
+        print(f"❌ {CONFIG_PATH} not found.")
         sys.exit(1)
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         return f.read()
+
 
 def write_config(content):
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         f.write(content)
 
+
 def already_registered(content):
-    return "solar-optimizer-panel" in content and "solar_optimizer_panel.js" in content
+    return "- name: solar-optimizer-panel" in content and "solar_optimizer_panel.js" in content
+
 
 def clean_old_entries(content):
-    # Entferne alle alten markierten Blöcke (dict- und list-stil)
     content = re.sub(
-        r"\n?# >>> HA Solar Excess Optimizer Panel.*?# <<< HA Solar Excess Optimizer Panel Ende >>>\n?",
+        r"\n?# >>> HA Solar Excess Optimizer Panel.*?# <<< HA Solar Excess Optimizer Panel End[e]? >>>\n?",
         "\n", content, flags=re.DOTALL)
     content = re.sub(
         r"\n?# >>> Solar Excess Optimizer Panel.*?# <<< Solar Excess Optimizer Panel Ende >>>\n?",
         "\n", content, flags=re.DOTALL)
-    # Entferne solar_excess_optimizer dict-Eintrag unter panel_custom
     content = re.sub(
         r"(panel_custom:.*?)  solar_excess_optimizer:.*?(?=\n\S|\Z)",
         r"\1", content, flags=re.DOTALL)
-    # Entferne solar-optimizer-panel list-Eintrag ohne unseren Marker (alter Stil)
-    content = re.sub(
-        r"  - name: solar-optimizer-panel\n(?:    .*\n)*", "", content)
-    # Entferne leere panel_custom Blöcke
+    content = re.sub(r"  - name: solar-optimizer-panel\n(?:    .*\n)*", "", content)
     content = re.sub(r"\npanel_custom:\s*\n(?=\S|\Z)", "\n", content)
     return content
+
 
 def ha_reload():
     url = f"{HA_URL}/api/services/homeassistant/reload_core_config"
@@ -71,32 +72,29 @@ def ha_reload():
         headers={"Authorization": f"Bearer {HA_TOKEN}", "Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
-            print(f"✅ HA Core-Reload: HTTP {r.status}")
+            print(f"✅ HA core reload: HTTP {r.status}")
     except urllib.error.HTTPError as e:
-        print(f"⚠ Reload HTTP {e.code} – bitte HA manuell neu starten.")
+        print(f"⚠ Reload HTTP {e.code} – please restart HA manually.")
     except Exception as e:
-        print(f"⚠ Reload Fehler: {e}")
+        print(f"⚠ Reload error: {e}")
+
 
 def main():
-    # 1. JS Datei kopieren
     copy_js()
-
-    # 2. configuration.yaml aktualisieren
     content = read_config()
     content = clean_old_entries(content)
 
     if already_registered(content):
-        print("✅ Panel bereits korrekt registriert.")
+        print("✅ Panel already registered correctly.")
         ha_reload()
         return
 
     content = content.rstrip("\n") + PANEL_BLOCK
     write_config(content)
-    print(f"✅ panel_custom (Listen-Format + JS) in {CONFIG_PATH} eingetragen.")
-
-    # 3. HA reload
+    print(f"✅ panel_custom (list format + JS) written to {CONFIG_PATH}")
     ha_reload()
-    print("✅ Fertig – Panel erscheint nach Browser-Neulade in der Sidebar.")
+    print("✅ Done – panel will appear in sidebar after browser reload.")
+
 
 if __name__ == "__main__":
     main()

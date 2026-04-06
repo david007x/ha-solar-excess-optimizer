@@ -3,6 +3,7 @@ from ha_client import turn_on, turn_off
 
 
 class SteppedDevice(BaseDevice):
+    """Multiple fixed power levels with time-based hysteresis and override."""
 
     def __init__(self, cfg: dict, hysteresis_w: int = 150):
         super().__init__(cfg, hysteresis_w)
@@ -56,10 +57,10 @@ class SteppedDevice(BaseDevice):
         if step >= 0:
             await turn_on(self.steps[step]["switch_entity"])
             self._active = True
-            self.log(f"Stufe {step+1} → {self.steps[step]['power_w']}W")
+            self.log(f"Step {step+1} → {self.steps[step]['power_w']}W")
         else:
             self._active = False
-            self.log("AUS")
+            self.log("OFF")
         self._current_step = step
 
     async def _deactivate(self):
@@ -70,6 +71,9 @@ class SteppedDevice(BaseDevice):
 
     def status_dict(self) -> dict:
         pw = self.steps[self._current_step]["power_w"] if self._current_step >= 0 else 0
-        return {**self._base_status(), "power_w": self._actual_consumption_w if self._active else 0,
-                "config_power_w": pw, "current_step": self._current_step+1,
-                "total_steps": len(self.steps), "steps": [s["power_w"] for s in self.steps]}
+        return {**self._base_status(),
+                "power_w": self._actual_consumption_w if self._active else 0,
+                "config_power_w": pw,
+                "current_step": self._current_step + 1,
+                "total_steps": len(self.steps),
+                "steps": [s["power_w"] for s in self.steps]}

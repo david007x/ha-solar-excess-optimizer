@@ -225,7 +225,7 @@ HTML = r"""<!DOCTYPE html>
   </div>
   <div class="tab-bar">
     <button class="tab active" onclick="showPage('dashboard')">Dashboard</button>
-    <button class="tab" onclick="showPage('config')">Verbraucher</button>
+    <button class="tab" onclick="showPage('config')">Devices</button>
     <button class="tab" onclick="showPage('log')">Log</button>
   </div>
 </header>
@@ -233,13 +233,13 @@ HTML = r"""<!DOCTYPE html>
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
   <div class="stat-grid" id="stat-grid">
-    <div class="stat"><div class="stat-label">PV Überschuss</div><div class="stat-value" id="surplus-val">–</div><div class="stat-sub">Netzeinspeisung</div></div>
-    <div class="stat"><div class="stat-label">Verteilt an</div><div class="stat-value solar" id="consuming-val">–</div><div class="stat-sub">Aktive Geräte</div></div>
-    <div class="stat"><div class="stat-label">Verbleibend</div><div class="stat-value" id="remaining-val">–</div><div class="stat-sub">Nach Regelung</div></div>
-    <div class="stat"><div class="stat-label">Geräte aktiv</div><div class="stat-value solar" id="active-count">–</div><div class="stat-sub" id="active-names">–</div></div>
+    <div class="stat"><div class="stat-label">PV Surplus</div><div class="stat-value" id="surplus-val">–</div><div class="stat-sub">Grid export</div></div>
+    <div class="stat"><div class="stat-label">Distributed to</div><div class="stat-value solar" id="consuming-val">–</div><div class="stat-sub">Active devices</div></div>
+    <div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" id="remaining-val">–</div><div class="stat-sub">After control</div></div>
+    <div class="stat"><div class="stat-label">Devices active</div><div class="stat-value solar" id="active-count">–</div><div class="stat-sub" id="active-names">–</div></div>
   </div>
   <div class="section-header">
-    <span class="section-title">Verbraucher</span>
+    <span class="section-title">Devices</span>
     <span class="section-title" id="last-update">–</span>
   </div>
   <div class="device-grid" id="device-grid"></div>
@@ -248,10 +248,10 @@ HTML = r"""<!DOCTYPE html>
 <!-- CONFIG -->
 <div id="page-config" class="page">
   <div class="config-card">
-    <div class="config-title">// GLOBALE EINSTELLUNGEN</div>
+    <div class="config-title">// GLOBAL SETTINGS</div>
     <div class="form-row">
       <div class="form-group">
-        <label>Netzleistung Entity</label>
+        <label>Grid Power Entity</label>
         <div class="ep-wrap" id="ep-wrap-grid">
           <div class="ep-input-row">
             <input class="ep-input" id="cfg-grid-entity" placeholder="sensor.grid_power" autocomplete="off" readonly>
@@ -260,13 +260,13 @@ HTML = r"""<!DOCTYPE html>
         </div>
       </div>
       <div class="form-group">
-        <label>Hysterese (W)</label>
+        <label>Hysteresis (W)</label>
         <input id="cfg-hysteresis" type="number" value="150">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Regelintervall (Sek)</label>
+        <label>Update Interval (sec)</label>
         <input id="cfg-interval" type="number" value="10">
       </div>
       <div class="form-group">
@@ -279,13 +279,13 @@ HTML = r"""<!DOCTYPE html>
   </div>
 
   <div class="config-card">
-    <div class="config-title">// VERBRAUCHER</div>
+    <div class="config-title">// DEVICES</div>
     <div id="device-list-config"></div>
-    <button class="btn btn-primary" onclick="toggleAddDevice()" style="margin-top:.75rem">+ Gerät hinzufügen</button>
+    <button class="btn btn-primary" onclick="toggleAddDevice()" style="margin-top:.75rem">+ Add Device</button>
   </div>
 
   <div class="config-card" id="add-device-section">
-    <div class="config-title">// NEUES GERÄT</div>
+    <div class="config-title">// NEW DEVICE</div>
 
     <div class="form-row">
       <div class="form-group">
@@ -293,19 +293,19 @@ HTML = r"""<!DOCTYPE html>
         <input id="new-name" placeholder="z.B. Heizstab">
       </div>
       <div class="form-group">
-        <label>Priorität</label>
+        <label>Priority</label>
         <input id="new-priority" type="number" value="3" min="1">
       </div>
     </div>
 
     <div class="form-group" style="margin-bottom:.75rem">
-      <label>Gerätetyp</label>
+      <label>Device Type</label>
       <div class="type-pills">
-        <div class="type-pill selected" data-type="switch" onclick="selectType(this)">Switch (An/Aus)</div>
-        <div class="type-pill" data-type="stepped" onclick="selectType(this)">Stufen (fix)</div>
-        <div class="type-pill" data-type="variable" onclick="selectType(this)">Stufenlos</div>
-        <div class="type-pill" data-type="timed" onclick="selectType(this)">Zeitgesteuert</div>
-        <div class="type-pill" data-type="battery" onclick="selectType(this)">🔋 Batterie</div>
+        <div class="type-pill selected" data-type="switch" onclick="selectType(this)">Switch (On/Off)</div>
+        <div class="type-pill" data-type="stepped" onclick="selectType(this)">Stepped (fixed)</div>
+        <div class="type-pill" data-type="variable" onclick="selectType(this)">Variable</div>
+        <div class="type-pill" data-type="timed" onclick="selectType(this)">Timed</div>
+        <div class="type-pill" data-type="battery" onclick="selectType(this)">🔋 Battery</div>
       </div>
     </div>
 
@@ -322,7 +322,7 @@ HTML = r"""<!DOCTYPE html>
           </div>
         </div>
         <div class="form-group">
-          <label>Leistung (W)</label>
+          <label>Power (W)</label>
           <input id="sw-power" type="number" placeholder="500">
         </div>
       </div>
@@ -331,7 +331,7 @@ HTML = r"""<!DOCTYPE html>
     <!-- stepped -->
     <div id="fields-stepped" style="display:none">
       <div id="stepped-rows"></div>
-      <button class="btn" onclick="addStepRow()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);margin-bottom:.75rem">+ Stufe hinzufügen</button>
+      <button class="btn" onclick="addStepRow()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);margin-bottom:.75rem">+ + Add Step</button>
     </div>
 
     <!-- variable -->
@@ -358,21 +358,21 @@ HTML = r"""<!DOCTYPE html>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Min Leistung (W)</label>
+          <label>Min Power (W)</label>
           <input id="var-min" type="number" value="1400">
         </div>
         <div class="form-group">
-          <label>Max Leistung (W)</label>
+          <label>Max Power (W)</label>
           <input id="var-max" type="number" value="11000">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Schrittgröße (W)</label>
+          <label>Step Size (W)</label>
           <input id="var-step" type="number" value="230">
         </div>
         <div class="form-group">
-          <label>Rampen-Intervall (Sek)</label>
+          <label>Ramp Interval (sec)</label>
           <input id="var-ramp" type="number" value="30">
         </div>
       </div>
@@ -391,13 +391,13 @@ HTML = r"""<!DOCTYPE html>
           </div>
         </div>
         <div class="form-group">
-          <label>Leistung (W)</label>
+          <label>Power (W)</label>
           <input id="tim-power" type="number" placeholder="2000">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Mindestlaufzeit (Minuten/Tag)</label>
+          <label>Min Runtime (minutes/day)</label>
           <input id="tim-runtime" type="number" value="90">
         </div>
       </div>
@@ -416,7 +416,7 @@ HTML = r"""<!DOCTYPE html>
           </div>
         </div>
         <div class="form-group">
-          <label>Ladeleistung Entity <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+          <label>Charge Power Entity <span style="color:var(--muted);font-weight:400">(optional)</span></label>
           <div class="ep-wrap" id="ep-wrap-bat-pwr-entity">
             <div class="ep-input-row">
               <input class="ep-input" id="bat-power-entity" placeholder="sensor.batterie_ladeleistung" autocomplete="off" readonly>
@@ -427,35 +427,82 @@ HTML = r"""<!DOCTYPE html>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Ziel-SOC (%)</label>
+          <label>Target SOC (%)</label>
           <input id="bat-target-soc" type="number" value="100" min="0" max="100">
         </div>
         <div class="form-group">
-          <label>Max. Ladeleistung (W)</label>
+          <label>Max Charge Power (W)</label>
           <input id="bat-max-power" type="number" value="5000">
         </div>
       </div>
     </div>
 
+    <!-- wallbox -->
+    <div id="fields-wallbox" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Switch Entity (Ein/Aus)</label>
+          <div class="ep-wrap" id="ep-wrap-wb-switch">
+            <div class="ep-input-row">
+              <input class="ep-input" id="wb-switch" placeholder="switch.wallbox" autocomplete="off" readonly>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-wb-switch','wb-switch','switch,input_boolean,light,fan,climate,script,automation,scene')">⌕</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Ampere Entity (number.*)</label>
+          <div class="ep-wrap" id="ep-wrap-wb-ampere">
+            <div class="ep-input-row">
+              <input class="ep-input" id="wb-ampere" placeholder="number.wallbox_ladestrom" autocomplete="off" readonly>
+              <button class="ep-btn" onclick="openPicker('ep-wrap-wb-ampere','wb-ampere','number')">⌕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ladestufen (Ampere, kommagetrennt)</label>
+          <input id="wb-steps" type="text" value="6,8,10,13,16" placeholder="6,8,10,13,16">
+        </div>
+        <div class="form-group">
+          <label>Spannung (V)</label>
+          <input id="wb-voltage" type="number" value="230">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Pause bei Stufenwechsel (Sek)</label>
+          <input id="wb-cycle-delay" type="number" value="3" min="1">
+        </div>
+        <div class="form-group">
+          <label>Änderungsintervall (Sek)</label>
+          <input id="wb-ramp-interval" type="number" value="30" min="10">
+        </div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.75rem;font-size:.75rem;color:var(--muted);font-family:var(--mono)">
+        ℹ Stufenwechsel: Wallbox wird automatisch kurz aus- und wieder eingeschaltet
+      </div>
+    </div>
+
     <!-- Gemeinsame optionale Felder für alle Typen -->
     <details style="margin-bottom:.75rem">
-      <summary style="font-family:var(--mono);font-size:.7rem;color:var(--muted);cursor:pointer;text-transform:uppercase;letter-spacing:.05em">⚙ Erweitert (optional)</summary>
+      <summary style="font-family:var(--mono);font-size:.7rem;color:var(--muted);cursor:pointer;text-transform:uppercase;letter-spacing:.05em">⚙ Advanced (optional)</summary>
       <div style="margin-top:.75rem">
         <div class="form-row">
           <div class="form-group">
-            <label>Bedingung Entity <span style="color:var(--muted);font-weight:400">(nur aktiv wenn 'on')</span></label>
+            <label>Condition Entity <span style="color:var(--muted);font-weight:400">(only active when 'on')</span></label>
             <div class="ep-wrap" id="ep-wrap-condition">
               <div class="ep-input-row">
-                <input class="ep-input" id="new-condition-entity" placeholder="z.B. binary_sensor.auto_verbunden" autocomplete="off" readonly>
+                <input class="ep-input" id="new-condition-entity" placeholder="e.g. binary_sensor.car_connected" autocomplete="off" readonly>
                 <button class="ep-btn" onclick="openPicker('ep-wrap-condition','new-condition-entity','binary_sensor,input_boolean')">⌕</button>
               </div>
             </div>
           </div>
           <div class="form-group">
-            <label>Verbrauch Entity <span style="color:var(--muted);font-weight:400">(tatsächliche Leistung W)</span></label>
+            <label>Consumption Entity <span style="color:var(--muted);font-weight:400">(actual power in W)</span></label>
             <div class="ep-wrap" id="ep-wrap-consumption">
               <div class="ep-input-row">
-                <input class="ep-input" id="new-consumption-entity" placeholder="z.B. sensor.wallbox_leistung" autocomplete="off" readonly>
+                <input class="ep-input" id="new-consumption-entity" placeholder="e.g. sensor.wallbox_power" autocomplete="off" readonly>
                 <button class="ep-btn" onclick="openPicker('ep-wrap-consumption','new-consumption-entity','sensor')">⌕</button>
               </div>
             </div>
@@ -463,11 +510,11 @@ HTML = r"""<!DOCTYPE html>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Einschalt-Verzögerung (Sek)</label>
+            <label>On-Delay (sec)</label>
             <input id="new-on-delay" type="number" value="30" min="0">
           </div>
           <div class="form-group">
-            <label>Ausschalt-Verzögerung (Sek)</label>
+            <label>Off-Delay (sec)</label>
             <input id="new-off-delay" type="number" value="20" min="0">
           </div>
         </div>
@@ -475,22 +522,22 @@ HTML = r"""<!DOCTYPE html>
     </details>
 
     <div style="display:flex;gap:.5rem;margin-top:.75rem">
-      <button class="btn btn-success" onclick="addDevice()">Gerät speichern</button>
-      <button class="btn" onclick="toggleAddDevice()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted)">Abbrechen</button>
+      <button class="btn btn-success" onclick="addDevice()">Save Device</button>
+      <button class="btn" onclick="toggleAddDevice()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted)">Cancel</button>
     </div>
   </div>
 
   <div style="display:flex;justify-content:flex-end;margin-top:1rem">
-    <button class="btn btn-primary" onclick="saveConfig()">💾 Konfiguration speichern & neu laden</button>
+    <button class="btn btn-primary" onclick="saveConfig()">💾 Save Configuration & Reload</button>
   </div>
 </div>
 
 <!-- LOG -->
 <div id="page-log" class="page">
   <div class="config-card">
-    <div class="config-title">// ZYKLUSPROTOKOLL</div>
+    <div class="config-title">// CYCLE LOG</div>
     <table class="log-table">
-      <thead><tr><th>#</th><th>Überschuss</th><th>Verbleibend</th><th>Geräte</th></tr></thead>
+      <thead><tr><th>#</th><th>Surplus</th><th>Remaining</th><th>Devices</th></tr></thead>
       <tbody id="log-tbody"></tbody>
     </table>
   </div>
@@ -528,7 +575,7 @@ function renderDashboard(d) {
   document.getElementById('active-count').textContent = active.length + '/' + d.devices.length;
   document.getElementById('active-names').textContent = active.map(x => x.name).join(', ') || 'Keines';
   document.getElementById('last-update').textContent =
-    'Aktualisiert ' + new Date().toLocaleTimeString('de-DE');
+    'Updated ' + new Date().toLocaleTimeString('de-DE');
 
 
   const grid = document.getElementById('device-grid');
@@ -556,20 +603,20 @@ function setVal(id, text, cls) {
 
 function renderDeviceCard(dev) {
   const badgeCls = dev.forced ? 'badge-forced' : (dev.active ? 'badge-on' : 'badge-off');
-  const badgeText = dev.forced ? '⚡ ZWANG' : (dev.active ? '● AN' : '○ AUS');
+  const badgeText = dev.forced ? '⚡ FORCED' : (dev.active ? '● ON' : '○ OFF');
   const cardCls = dev.forced ? 'forced' : (dev.active ? 'on' : '');
   const ov = dev.override || 'auto';
   const condBadge = dev.condition_entity && !dev.condition_ok
-    ? `<span class="device-badge badge-off" style="font-size:.58rem;margin-left:4px">⛔ Bedingung</span>` : '';
+    ? `<span class="device-badge badge-off" style="font-size:.58rem;margin-left:4px">⛔ Condition</span>` : '';
   let extra = '';
   // Timer bars
   if (dev.on_timer_pct > 0 && !dev.active) {
-    extra += `<div class="timer-wrap"><span class="timer-label">EIN in…</span>
+    extra += `<div class="timer-wrap"><span class="timer-label">ON in…</span>
       <div class="timer-bar"><div class="timer-fill-on" style="width:${dev.on_timer_pct}%"></div></div>
       <span class="timer-label">${dev.on_timer_pct}%</span></div>`;
   }
   if (dev.off_timer_pct > 0 && dev.active) {
-    extra += `<div class="timer-wrap"><span class="timer-label">AUS in…</span>
+    extra += `<div class="timer-wrap"><span class="timer-label">OFF in…</span>
       <div class="timer-bar"><div class="timer-fill-off" style="width:${dev.off_timer_pct}%"></div></div>
       <span class="timer-label">${dev.off_timer_pct}%</span></div>`;
   }
@@ -586,13 +633,22 @@ function renderDeviceCard(dev) {
   }
   if (dev.type === 'timed') {
     extra = `<div class="progress-bar"><div class="progress-fill" style="width:${dev.runtime_pct||0}%"></div></div>
-             <div class="device-log">${dev.runtime_today_min||0} / ${dev.runtime_target_min} min heute</div>`;
+             <div class="device-log">${dev.runtime_today_min||0} / ${dev.runtime_target_min} min today</div>`;
+  }
+  if (dev.type === 'wallbox') {
+    const steps = dev.steps || [];
+    const dots = steps.map((s,i) =>
+      `<div class="step-dot ${i === (dev.current_step-1) ? 'active' : ''}" title="${s.ampere}A"></div>`
+    ).join('');
+    const cycling = dev.cycling ? '<span style="color:var(--orange);font-size:.65rem;font-family:var(--mono)"> ⟳ Zyklus...</span>' : '';
+    extra = `<div class="step-dots">${dots}</div>
+             <div class="device-log">${dev.current_ampere||0}A · ${dev.power_w||0}W${cycling}</div>`;
   }
   if (dev.type === 'battery') {
     const soc = dev.soc_pct || 0;
     const tgt = dev.target_pct || 100;
     extra = `<div class="progress-bar"><div class="progress-fill" style="width:${soc}%;background:linear-gradient(90deg,#3b8ef0,#2dde98)"></div></div>
-             <div class="device-log">SOC: ${soc}% → Ziel: ${tgt}% | Max: ${dev.max_charge_power_w||0}W</div>`;
+             <div class="device-log">SOC: ${soc}% → Target: ${tgt}% | Max: ${dev.max_charge_power_w||0}W</div>`;
   }
 
   const log = (dev.log || []).slice(0, 2).join('<br>');
@@ -611,11 +667,11 @@ function renderDeviceCard(dev) {
       <div class="device-log">${log}</div>
       <div class="override-bar">
         <button class="ov-btn ${ov==='force_on'?'active-on':''}"
-          onclick="setOverride('${n}','force_on')">⬆ Zwang AN</button>
+          onclick="setOverride('${n}','force_on')">⬆ Force ON</button>
         <button class="ov-btn ${ov==='auto'?'active-auto':''}"
           onclick="setOverride('${n}','auto')">⟳ Auto</button>
         <button class="ov-btn ${ov==='force_off'?'active-off':''}"
-          onclick="setOverride('${n}','force_off')">⬇ Zwang AUS</button>
+          onclick="setOverride('${n}','force_off')">⬇ Force OFF</button>
       </div>
     </div>`;
 }
@@ -636,12 +692,12 @@ async function loadConfigForm() {
 
 function renderDeviceList() {
   const el = document.getElementById('device-list-config');
-  if (!_localDevices.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.8rem">Noch keine Geräte konfiguriert.</p>'; return; }
+  if (!_localDevices.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.8rem">Noch keine Devices konfiguriert.</p>'; return; }
   el.innerHTML = _localDevices.map((d, i) => `
     <div class="device-list-item">
       <div class="dli-left">
         <span class="dli-name">${d.name}</span>
-        <span class="dli-meta">${d.type} · Priorität ${d.priority} · ${getPowerLabel(d)}</span>
+        <span class="dli-meta">${d.type} · Priority ${d.priority} · ${getPowerLabel(d)}</span>
       </div>
       <div class="dli-right">
         <label class="toggle">
@@ -655,6 +711,7 @@ function renderDeviceList() {
 
 function getPowerLabel(d) {
   if (d.type === 'battery') return `SOC → ${d.target_soc || 100}%`;
+  if (d.type === 'wallbox') return (d.steps||[]).map(s=>s.ampere+'A').join('/');
   if (d.type === 'stepped') return d.steps?.map(s => s.power_w + 'W').join('/') || '–';
   if (d.type === 'variable') return `${d.power_min}–${d.power_max}W`;
   return (d.power_w || '?') + 'W';
@@ -672,7 +729,7 @@ async function saveConfig() {
     devices: _localDevices,
   };
   await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
-  alert('Gespeichert! HA Solar Excess Optimizer lädt die Konfiguration neu.');
+  alert('Saved! Reloading configuration.');
   loadConfigForm();
 }
 
@@ -689,7 +746,7 @@ function selectType(el) {
   document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
   _selectedType = el.dataset.type;
-  ['switch','stepped','variable','timed','battery'].forEach(t =>
+  ['switch','stepped','variable','timed','battery','wallbox'].forEach(t =>
     document.getElementById('fields-' + t).style.display = t === _selectedType ? 'block' : 'none');
 }
 
@@ -705,7 +762,7 @@ function addStepRow() {
   row.style.marginBottom = '.5rem';
   row.innerHTML = `
     <div class="form-group">
-      <label>Switch Entity Stufe ${stepNum}</label>
+      <label>Switch Entity Step ${stepNum}</label>
       <div class="ep-wrap" id="${wrapId}">
         <div class="ep-input-row">
           <input class="ep-input" id="${inputId}" placeholder="switch.heizstab_stufe${stepNum}" autocomplete="off" readonly>
@@ -714,7 +771,7 @@ function addStepRow() {
       </div>
     </div>
     <div class="form-group">
-      <label>Leistung (W)</label>
+      <label>Power (W)</label>
       <input class="step-power-input" type="number" placeholder="${stepNum * 1000}">
     </div>`;
   document.getElementById('stepped-rows').appendChild(row);
@@ -723,7 +780,7 @@ function addStepRow() {
 function addDevice() {
   const name = document.getElementById('new-name').value.trim();
   const priority = parseInt(document.getElementById('new-priority').value) || 99;
-  if (!name) { alert('Bitte einen Namen eingeben.'); return; }
+  if (!name) { alert('Please enter a name.'); return; }
 
   let dev = { name, type: _selectedType, priority, enabled: true };
 
@@ -748,6 +805,13 @@ function addDevice() {
     dev.switch_entity = document.getElementById('tim-entity').value;
     dev.power_w = parseInt(document.getElementById('tim-power').value) || 0;
     dev.min_runtime_minutes = parseInt(document.getElementById('tim-runtime').value) || 60;
+  } else if (_selectedType === 'wallbox') {
+    dev.switch_entity = document.getElementById('wb-switch').value;
+    dev.power_entity = document.getElementById('wb-ampere').value;
+    dev.steps_a = document.getElementById('wb-steps').value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    dev.voltage = parseInt(document.getElementById('wb-voltage').value) || 230;
+    dev.power_cycle_delay_sec = parseInt(document.getElementById('wb-cycle-delay').value) || 3;
+    dev.ramp_interval_sec = parseInt(document.getElementById('wb-ramp-interval').value) || 30;
   } else if (_selectedType === 'battery') {
     dev.soc_entity = document.getElementById('bat-soc-entity').value;
     dev.power_entity = document.getElementById('bat-power-entity').value || null;
@@ -802,7 +866,7 @@ async function openPicker(wrapId, inputId, domains) {
 
   const dropdown = document.createElement('div');
   dropdown.className = 'ep-dropdown';
-  dropdown.innerHTML = '<div class="ep-loading">⟳ Entities laden...</div>';
+  dropdown.innerHTML = '<div class="ep-loading">⟳ Loading entities...</div>';
   wrap.appendChild(dropdown);
   _activePicker = { wrapId, inputId, dropdown };
 
@@ -815,7 +879,7 @@ async function openPicker(wrapId, inputId, domains) {
   try {
     entities = await loadEntities(domains);
   } catch(e) {
-    dropdown.innerHTML = '<div class="ep-empty">⚠ HA API nicht erreichbar</div>';
+    dropdown.innerHTML = '<div class="ep-empty">⚠ HA API unreachable</div>';
     return;
   }
 
@@ -824,7 +888,7 @@ async function openPicker(wrapId, inputId, domains) {
 
 function renderDropdown(dropdown, inputEl, entities) {
   dropdown.innerHTML = `
-    <input class="ep-search" placeholder="Suchen..." oninput="filterEntities(this)" autofocus>
+    <input class="ep-search" placeholder="Search..." oninput="filterEntities(this)" autofocus>
     <div class="ep-list" id="ep-list-inner"></div>`;
   const list = dropdown.querySelector('#ep-list-inner');
   renderEntityList(list, entities, inputEl, dropdown);
@@ -848,7 +912,7 @@ function filterEntities(searchEl) {
 
 function renderEntityList(list, entities, inputEl, dropdown) {
   if (!entities.length) {
-    list.innerHTML = '<div class="ep-empty">Keine Entities gefunden</div>';
+    list.innerHTML = '<div class="ep-empty">No entities found</div>';
     return;
   }
   list.innerHTML = entities.slice(0, 150).map(e => `
@@ -958,14 +1022,14 @@ async def handle_post_config(request):
 async def control_loop(cfg: dict):
     global _last_status
     interval = cfg.get("update_interval_sec", 10)
-    logger.info(f"Regelschleife aktiv (Intervall: {interval}s)")
+    logger.info(f"Control loop active (interval: {interval}s)")
     while True:
         try:
             result = await controller.run_cycle()
             _last_status = result
             await ha_publisher.publish(result)
         except Exception as e:
-            logger.error(f"Regelzyklus Fehler: {e}", exc_info=True)
+            logger.error(f"Control cycle error: {e}", exc_info=True)
         await asyncio.sleep(interval)
 
 
@@ -999,9 +1063,9 @@ async def handle_override(request):
         device = controller.get_device(name)
         if device is None:
             return web.Response(status=404,
-                text=json.dumps({"error": f"Gerät '{name}' nicht gefunden"}))
+                text=json.dumps({"error": f"Device '{name}' not found"}))
         device.set_override(mode)
-        logger.info(f"Override gesetzt: {name} → {mode}")
+        logger.info(f"Override set: {name} → {mode}")
         return web.Response(text=json.dumps({"ok": True, "name": name, "mode": mode}),
                             content_type="application/json")
     except Exception as e:

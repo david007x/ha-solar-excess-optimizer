@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-HA_URL = os.environ.get("HA_URL", "http://supervisor/core")
+HA_URL   = os.environ.get("HA_URL", "http://supervisor/core")
 HA_TOKEN = os.environ.get("HA_TOKEN", "")
 
 
@@ -47,7 +47,7 @@ async def turn_off(entity_id: str):
 
 
 async def set_number(entity_id: str, value: float):
-    """Setzt einen number.*  Entity (z.B. Wallbox Ampere)."""
+    """Set a number.* entity (e.g. wallbox ampere)."""
     url = f"{HA_URL}/api/services/number/set_value"
     try:
         async with aiohttp.ClientSession() as s:

@@ -1,7 +1,7 @@
 """
 cleanup_panel.py
-Entfernt alte fehlerhafte panel_custom Einträge (Dict-Stil) aus configuration.yaml.
-Wird beim Add-on-Start vor register_panel.py ausgeführt.
+Removes old/broken panel_custom entries from configuration.yaml.
+Run on add-on startup before register_panel.py.
 """
 import os
 import re
@@ -11,7 +11,7 @@ CONFIG_PATH = "/config/configuration.yaml"
 
 def main():
     if not os.path.exists(CONFIG_PATH):
-        print("configuration.yaml nicht gefunden – nichts zu bereinigen.")
+        print("configuration.yaml not found – nothing to clean.")
         return
 
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -19,30 +19,31 @@ def main():
 
     original = content
 
-    # Entferne unsere alten markierten Blöcke
+    # Remove our marked blocks
+    content = re.sub(
+        r"\n?# >>> HA Solar Excess Optimizer Panel.*?# <<< HA Solar Excess Optimizer Panel Ende >>>\n?",
+        "\n", content, flags=re.DOTALL
+    )
     content = re.sub(
         r"\n?# >>> Solar Excess Optimizer Panel.*?# <<< Solar Excess Optimizer Panel Ende >>>\n?",
-        "\n",
-        content,
-        flags=re.DOTALL
+        "\n", content, flags=re.DOTALL
     )
 
-    # Entferne alten Dict-Stil solar_excess_optimizer Eintrag unter panel_custom
+    # Remove old dict-style solar_excess_optimizer entry under panel_custom
     content = re.sub(
-        r"(\npanel_custom:\n(?:[ \t]+.*\n)*?)[ \t]+solar_excess_optimizer:[ \t]*\n(?:[ \t]+.*\n)*",
-        r"\1",
-        content
+        r"[ \t]+solar_excess_optimizer:[ \t]*\n(?:[ \t]+\S[^\n]*\n)+",
+        "", content
     )
 
-    # Entferne leere panel_custom: Blöcke die übrig bleiben
-    content = re.sub(r"\npanel_custom:\n(?=\S|\Z)", "\n", content)
+    # Remove empty panel_custom blocks
+    content = re.sub(r"\npanel_custom:[ \t]*\n(?=\S|\Z)", "\n", content)
 
     if content != original:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             f.write(content)
-        print("Alte panel_custom Einträge entfernt.")
+        print("Old panel_custom entries removed.")
     else:
-        print("Keine alten Einträge gefunden – nichts zu tun.")
+        print("No old entries found – nothing to do.")
 
 
 if __name__ == "__main__":

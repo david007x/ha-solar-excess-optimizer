@@ -4,6 +4,7 @@ from ha_client import turn_on, turn_off, is_on, set_number
 
 
 class VariableDevice(BaseDevice):
+    """Continuous power control via HA number.* entity (e.g. wallbox ampere)."""
 
     def __init__(self, cfg: dict, hysteresis_w: int = 150):
         super().__init__(cfg, hysteresis_w)
@@ -27,7 +28,7 @@ class VariableDevice(BaseDevice):
                 self._active = True
                 self._current_power_w = self.power_max
                 await self._set_power(self.power_max)
-                self.log(f"EIN Max {self.power_max}W (Override)")
+                self.log(f"ON at max {self.power_max}W (override)")
             return await self.read_consumption(self._current_power_w)
 
         if self._override == OVERRIDE_FORCE_OFF:
@@ -35,20 +36,18 @@ class VariableDevice(BaseDevice):
                 await turn_off(self.switch_entity)
                 self._active = False
                 self._current_power_w = 0
-                self.log("AUS (Override)")
+                self.log("OFF (override)")
             return 0
 
-        # condition_entity prüfen (z.B. binary_sensor.wallbox_auto_verbunden)
         self._condition_blocked = not await self.check_condition()
         if self._condition_blocked:
             if self._active:
                 await turn_off(self.switch_entity)
                 self._active = False
                 self._current_power_w = 0
-                self.log(f"AUS – Bedingung nicht erfüllt ({self.condition_entity})")
+                self.log(f"OFF – condition not met ({self.condition_entity})")
             return 0
 
-        # Einschalten
         if not self._active:
             if self._check_on_delay(surplus_w >= self.power_min + self.hysteresis_w):
                 await turn_on(self.switch_entity)
@@ -57,23 +56,20 @@ class VariableDevice(BaseDevice):
                 await self._set_power(self.power_min)
                 self._on_condition_since = None
                 self._last_ramp_time = now
-                self.log(f"EIN mit {self.power_min}W")
+                self.log(f"ON at {self.power_min}W")
             return 0
 
-        # Ausschalten
         if self._check_off_delay(surplus_w < -self.hysteresis_w and self._current_power_w <= self.power_min):
             await turn_off(self.switch_entity)
             self._active = False
             self._current_power_w = 0
             self._off_condition_since = None
-            self.log("AUS – zu wenig Überschuss")
+            self.log("OFF – insufficient surplus")
             return 0
         elif surplus_w >= -self.hysteresis_w:
             self._check_off_delay(False)
 
-        # Leistung rampen
         if ramp_ready and self._active:
-            # Wenn consumption_entity gesetzt: tatsächlichen Verbrauch für Regelung nutzen
             actual = await self.read_consumption(self._current_power_w)
             deviation = surplus_w - (self._current_power_w - actual)
             target = self._current_power_w + deviation
@@ -98,10 +94,11 @@ class VariableDevice(BaseDevice):
     def status_dict(self) -> dict:
         return {
             **self._base_status(),
-            "power_w": round(self._actual_consumption_w) if self._active else 0,
+            "power_w":    round(self._actual_consumption_w) if self._active else 0,
             "set_power_w": round(self._current_power_w),
-            "power_min": self.power_min,
-            "power_max": self.power_max,
-            "power_pct": round((self._current_power_w - self.power_min) /
-                               max(1, self.power_max - self.power_min) * 100) if self._active else 0,
+            "power_min":  self.power_min,
+            "power_max":  self.power_max,
+            "power_pct":  round((self._current_power_w - self.power_min) /
+                                max(1, self.power_max - self.power_min) * 100)
+                          if self._active else 0,
         }
