@@ -494,8 +494,8 @@ HTML = r"""<!DOCTYPE html>
             <label>Condition Entity <span style="color:var(--muted);font-weight:400">(only active when 'on')</span></label>
             <div class="ep-wrap" id="ep-wrap-condition">
               <div class="ep-input-row">
-                <input class="ep-input" id="new-condition-entity" placeholder="e.g. binary_sensor.car_connected" autocomplete="off" readonly>
-                <button class="ep-btn" onclick="openPicker('ep-wrap-condition','new-condition-entity','binary_sensor,input_boolean')">⌕</button>
+                <input class="ep-input" id="new-condition-entity" placeholder="z.B. sensor.wallbox_status" autocomplete="off" readonly>
+                <button class="ep-btn" onclick="openPicker('ep-wrap-condition','new-condition-entity','binary_sensor,input_boolean,sensor')">⌕</button>
               </div>
             </div>
           </div>
