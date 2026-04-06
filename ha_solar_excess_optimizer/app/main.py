@@ -1043,7 +1043,6 @@ async def control_loop(cfg: dict):
         try:
             result = await controller.run_cycle()
             _last_status = result
-            await ha_publisher.publish(result)
         except Exception as e:
             logger.error(f"Control cycle error: {e}", exc_info=True)
         await asyncio.sleep(interval)
