@@ -15,24 +15,9 @@ options:
   update_interval_sec: 10
   hysteresis_w: 150
   log_level: "info"
-
-
-  # Battery example (type: battery, add just like any other device):
-  # - name: "Home Battery"
-  #   type: battery
-  #   priority: 1
-  #   enabled: true
-  #   soc_entity: sensor.batterie_soc
-  #   consumption_entity: sensor.batterie_ladeleistung   # optional
-  #   consumption_unit: W
-  #   target_soc: 100
-  #   max_charge_power_w: 5000
-
-  # Time-based hysteresis (seconds)
   on_delay_sec: 30
   off_delay_sec: 20
   sensor_stabilize_sec: 60
-  devices: []
 
 schema:
   grid_power_entity: str
@@ -42,7 +27,6 @@ schema:
   on_delay_sec: int?
   off_delay_sec: int?
   sensor_stabilize_sec: int?
-  devices: []
 
 ports:
   8099/tcp: 8099
