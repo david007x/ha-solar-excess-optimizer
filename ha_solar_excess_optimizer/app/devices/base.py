@@ -74,6 +74,26 @@ class BaseDevice(ABC):
     def override(self) -> str:
         return self._override
 
+
+    def _record_activation(self):
+        """Merkt sich den Einschaltzeitpunkt."""
+        if self._active_since == 0.0:
+            self._active_since = time.time()
+
+    def _record_deactivation(self):
+        """Reset nach Ausschalten."""
+        self._active_since = 0.0
+
+    def _min_runtime_ok(self) -> bool:
+        """True wenn Mindestlaufzeit seit Einschalten abgelaufen."""
+        if self._active_since == 0.0:
+            return True
+        elapsed = time.time() - self._active_since
+        if elapsed < self.min_runtime_sec:
+            self.log(f"⏱ Mindestlaufzeit: {elapsed:.0f}s/{self.min_runtime_sec}s")
+            return False
+        return True
+
     # ── condition_entity ──────────────────────────────────────────────────────
 
     async def check_condition(self) -> bool:
