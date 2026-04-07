@@ -527,11 +527,7 @@ HTML = r"""<!DOCTYPE html>
             <div class="ep-wrap" id="ep-wrap-consumption">
               <div class="ep-input-row">
                 <input class="ep-input" id="new-consumption-entity" placeholder="z.B. sensor.wallbox_leistung" autocomplete="off" readonly>
-                <select class="unit-select" id="new-consumption-unit" title="Einheit">
-                  <option value="W">W</option>
-                  <option value="kW">kW</option>
-                </select>
-                <button class="ep-btn" onclick="openPicker('ep-wrap-consumption','new-consumption-entity','sensor')">⌕</button>
+<button class="ep-btn" onclick="openPicker('ep-wrap-consumption','new-consumption-entity','sensor')">⌕</button>
                 <button class="ep-clear" onclick="clearPicker('new-consumption-entity')" title="Löschen">✕</button>
               </div>
             </div>
@@ -830,7 +826,7 @@ function editDevice(i) {
   document.getElementById('new-condition-states').value =
     Array.isArray(d.condition_states) ? d.condition_states.join(',') : (d.condition_states || '');
   document.getElementById('new-consumption-entity').value = d.consumption_entity || '';
-  document.getElementById('new-consumption-unit').value = d.consumption_unit || 'W';
+
   document.getElementById('new-on-delay').value = d.on_delay_sec || 30;
   document.getElementById('new-off-delay').value = d.off_delay_sec || 20;
   document.getElementById('new-min-runtime').value = d.min_runtime_sec || 60;
@@ -953,8 +949,7 @@ function addDevice() {
   if (condEnt) dev.condition_entity = condEnt;
   if (condStates) dev.condition_states = condStates;
   if (consEnt) dev.consumption_entity = consEnt;
-  const consUnit = document.getElementById('new-consumption-unit').value;
-  if (consUnit) dev.consumption_unit = consUnit;  // immer speichern
+
   if (onDelay !== 30) dev.on_delay_sec = onDelay;
   if (offDelay !== 20) dev.off_delay_sec = offDelay;
   const minRuntime = parseInt(document.getElementById('new-min-runtime').value);
@@ -971,7 +966,7 @@ function addDevice() {
   document.getElementById('new-condition-states').value = '';
   document.getElementById('new-min-runtime').value = 60;
   document.getElementById('new-consumption-entity').value = '';
-  document.getElementById('new-consumption-unit').value = 'W';
+
 }
 
 // ─── Config API ───────────────────────────────────────────────────────────────

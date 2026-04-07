@@ -32,6 +32,17 @@ class BaseDevice(ABC):
         _ce = cfg.get("condition_entity", "")
         self.condition_entity: str | None = _ce if _ce else None
 
+        # condition_states: welche Sensor-Zustände als "erfüllt" gelten
+        # Eingabe als String "charged,available" oder Liste ["charged","available"]
+        # Leer = Standard on/off Logik
+        raw_cs = cfg.get("condition_states", "")
+        if isinstance(raw_cs, list):
+            self.condition_states: list[str] = [s.strip() for s in raw_cs if str(s).strip()]
+        elif raw_cs:
+            self.condition_states: list[str] = [s.strip() for s in str(raw_cs).split(",") if s.strip()]
+        else:
+            self.condition_states: list[str] = []
+
         _coe = cfg.get("consumption_entity", "")
         self.consumption_entity: str | None = _coe if _coe else None
 
@@ -66,7 +77,14 @@ class BaseDevice(ABC):
     # ── condition_entity ──────────────────────────────────────────────────────
 
     async def check_condition(self) -> bool:
-        """Returns True if condition_entity is met (or not configured)."""
+        """
+        Returns True if condition_entity is met (or not configured).
+
+        Two modes:
+        1. condition_states set → True if sensor value is in the list (case-insensitive, whitespace-stripped)
+           e.g. condition_states: "charged,available,connected"
+        2. No condition_states → Standard: on/true/1/yes or numeric > 0
+        """
         if not self.condition_entity:
             return True
         from ha_client import get_state
@@ -74,9 +92,26 @@ class BaseDevice(ABC):
         if state is None:
             self.log(f"⚠ condition_entity '{self.condition_entity}' not found")
             return False
-        val = state.get("state", "").lower()
-        if val in ("on", "true", "1", "yes"):
+
+        val = str(state.get("state", "")).strip()
+
+        # Mode 1: condition_states list (case-insensitive)
+        if self.condition_states:
+            val_lower = val.lower()
+            states_lower = [s.lower() for s in self.condition_states]
+            result = val_lower in states_lower
+            if not result:
+                self.log(f"⛔ '{val}' not in {self.condition_states}")
+            else:
+                self.log(f"✅ '{val}' matches condition")
+            return result
+
+        # Mode 2: Standard on/off/numeric
+        val_lower = val.lower()
+        if val_lower in ("on", "true", "1", "yes"):
             return True
+        if val_lower in ("off", "false", "0", "no", "unavailable", "unknown", "none"):
+            return False
         try:
             return float(val) > 0
         except ValueError:
