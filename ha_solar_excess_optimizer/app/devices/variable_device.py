@@ -29,7 +29,8 @@ class VariableDevice(BaseDevice):
                 self._current_power_w = self.power_max
                 await self._set_power(self.power_max)
                 self.log(f"ON at max {self.power_max}W (override)")
-            return await self.read_consumption(self._current_power_w)
+            await self.read_consumption(self._current_power_w)  # nur Anzeige
+        return self._current_power_w
 
         if self._override == OVERRIDE_FORCE_OFF:
             if self._active:
@@ -78,10 +79,12 @@ class VariableDevice(BaseDevice):
             if abs(target - self._current_power_w) >= self.power_step:
                 self.log(f"{self._current_power_w:.0f}W → {target:.0f}W (Δ{surplus_w:+.0f}W)")
                 self._current_power_w = target
+                self._allocated_w = target
                 await self._set_power(target)
                 self._last_ramp_time = now
 
-        return await self.read_consumption(self._current_power_w)
+        await self.read_consumption(self._current_power_w)  # nur Anzeige
+        return self._current_power_w
 
     async def _set_power(self, power_w: float):
         await set_number(self.power_entity, round(power_w / 230))

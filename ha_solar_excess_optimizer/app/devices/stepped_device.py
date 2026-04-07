@@ -49,7 +49,8 @@ class SteppedDevice(BaseDevice):
 
         if self._current_step < 0:
             return 0
-        return await self.read_consumption(self.steps[self._current_step]["power_w"])
+        await self.read_consumption(self.steps[self._current_step]["power_w"])  # nur Anzeige
+        return self.steps[self._current_step]["power_w"]
 
     async def _activate_step(self, step: int):
         for s in self.steps:

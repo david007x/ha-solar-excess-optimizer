@@ -223,6 +223,14 @@ HTML = r"""<!DOCTYPE html>
   .unit-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
                  color: var(--muted); font-family: var(--mono); font-size: .75rem;
                  padding: .45rem .5rem; cursor: pointer; flex-shrink: 0; }
+
+  /* DRAG & DROP */
+  .device-list-item { cursor: grab; user-select: none; transition: opacity .2s, transform .2s; }
+  .device-list-item.dragging { opacity: .4; cursor: grabbing; }
+  .device-list-item.drag-over { border-color: var(--grid); transform: scale(1.01); }
+  .drag-handle { color: var(--muted); font-size: 1rem; cursor: grab; padding: 0 6px;
+                 flex-shrink: 0; line-height: 1; }
+  .drag-handle:hover { color: var(--text); }
 </style>
 </head>
 <body>
@@ -242,10 +250,9 @@ HTML = r"""<!DOCTYPE html>
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
   <div class="stat-grid" id="stat-grid">
-    <div class="stat"><div class="stat-label">PV Surplus</div><div class="stat-value" id="surplus-val">–</div><div class="stat-sub">Grid export</div></div>
-    <div class="stat"><div class="stat-label">Distributed to</div><div class="stat-value solar" id="consuming-val">–</div><div class="stat-sub">Active devices</div></div>
-    <div class="stat"><div class="stat-label">Remaining</div><div class="stat-value" id="remaining-val">–</div><div class="stat-sub">After control</div></div>
-    <div class="stat"><div class="stat-label">Devices active</div><div class="stat-value solar" id="active-count">–</div><div class="stat-sub" id="active-names">–</div></div>
+    <div class="stat"><div class="stat-label">PV Überschuss</div><div class="stat-value" id="surplus-val">–</div><div class="stat-sub" id="surplus-sub">Netz aktuell</div></div>
+    <div class="stat"><div class="stat-label">Zugeteilt</div><div class="stat-value solar" id="consuming-val">–</div><div class="stat-sub">An Geräte verteilt</div></div>
+    <div class="stat"><div class="stat-label">Geräte aktiv</div><div class="stat-value solar" id="active-count">–</div><div class="stat-sub" id="active-names">–</div></div>
   </div>
   <div class="section-header">
     <span class="section-title">Devices</span>
@@ -283,6 +290,12 @@ HTML = r"""<!DOCTYPE html>
         <select id="cfg-loglevel">
           <option>debug</option><option selected>info</option><option>warning</option><option>error</option>
         </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Sensor Stabilisierungszeit (Sek) <span style="color:var(--muted);font-weight:400">– nach Einschalten</span></label>
+        <input id="cfg-stabilize" type="number" value="60" min="0">
       </div>
     </div>
   </div>
@@ -598,8 +611,7 @@ function renderDashboard(d) {
   const active = d.devices.filter(x => x.active);
   const consumed = d.devices.reduce((a, x) => a + (x.power_w || 0), 0);
   setVal('consuming-val', consumed + ' W', 'solar');
-  setVal('remaining-val', (d.remaining_w >= 0 ? '+' : '') + d.remaining_w + ' W',
-         d.remaining_w >= 0 ? 'pos' : 'neg');
+
   document.getElementById('active-count').textContent = active.length + '/' + d.devices.length;
   document.getElementById('active-names').textContent = active.map(x => x.name).join(', ') || 'Keines';
   document.getElementById('last-update').textContent =
@@ -714,6 +726,7 @@ async function loadConfigForm() {
   document.getElementById('cfg-hysteresis').value = cfg.hysteresis_w || 150;
   document.getElementById('cfg-interval').value = cfg.update_interval_sec || 10;
   document.getElementById('cfg-loglevel').value = cfg.log_level || 'info';
+  document.getElementById('cfg-stabilize').value = cfg.sensor_stabilize_sec ?? 60;
   _localDevices = JSON.parse(JSON.stringify(cfg.devices || []));
   renderDeviceList();
 }
@@ -800,7 +813,7 @@ function editDevice(i) {
     document.getElementById('tim-runtime').value = d.min_runtime_minutes || 90;
   } else if (d.type === 'battery') {
     document.getElementById('bat-soc-entity').value = d.soc_entity || '';
-    document.getElementById('bat-power-entity').value = d.power_entity || '';
+    // bat-power-entity entfernt → consumption_entity unter Erweitert
     document.getElementById('bat-target-soc').value = d.target_soc || 100;
     document.getElementById('bat-max-power').value = d.max_charge_power_w || 5000;
   } else if (d.type === 'wallbox') {
@@ -836,6 +849,7 @@ async function saveConfig() {
     hysteresis_w: parseInt(document.getElementById('cfg-hysteresis').value),
     update_interval_sec: parseInt(document.getElementById('cfg-interval').value),
     log_level: document.getElementById('cfg-loglevel').value,
+    sensor_stabilize_sec: parseInt(document.getElementById('cfg-stabilize').value) || 60,
     devices: _localDevices,
   };
   await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
@@ -924,7 +938,7 @@ function addDevice() {
     dev.ramp_interval_sec = parseInt(document.getElementById('wb-ramp-interval').value) || 30;
   } else if (_selectedType === 'battery') {
     dev.soc_entity = document.getElementById('bat-soc-entity').value;
-    dev.power_entity = document.getElementById('bat-power-entity').value || null;
+  // power_entity bei battery entfernt
     dev.target_soc = parseInt(document.getElementById('bat-target-soc').value) || 100;
     dev.max_charge_power_w = parseInt(document.getElementById('bat-max-power').value) || 5000;
   }
@@ -952,7 +966,7 @@ function addDevice() {
   _stepRows = [];
   document.getElementById('stepped-rows').innerHTML = '';
   document.getElementById('bat-soc-entity').value = '';
-  document.getElementById('bat-power-entity').value = '';
+
   document.getElementById('new-condition-entity').value = '';
   document.getElementById('new-condition-states').value = '';
   document.getElementById('new-min-runtime').value = 60;
@@ -1077,6 +1091,45 @@ function clearPicker(inputId) {
   }
 }
 
+
+// ─── Drag & Drop Sortierung ───────────────────────────────────────────────────
+let _dragIndex = null;
+
+function onDragStart(e, i) {
+  _dragIndex = i;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragOver(e, i) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.device-list-item').forEach(el => el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onDrop(e, i) {
+  e.preventDefault();
+  if (_dragIndex === null || _dragIndex === i) return;
+  // Reihenfolge tauschen
+  const moved = _localDevices.splice(_dragIndex, 1)[0];
+  _localDevices.splice(i, 0, moved);
+  // Prioritäten neu vergeben (1-based, aufsteigend)
+  _localDevices.forEach((d, idx) => { d.priority = idx + 1; });
+  _dragIndex = null;
+  renderDeviceList();
+}
+
+function onDragEnd(e) {
+  _dragIndex = null;
+  document.querySelectorAll('.device-list-item').forEach(el => {
+    el.classList.remove('dragging', 'drag-over');
+  });
+}
+
+function initDragDrop() {
+  // Nichts nötig – Events sind inline definiert
+}
 // ─── Override ─────────────────────────────────────────────────────────────────
 async function setOverride(deviceName, mode) {
   await fetch('/api/override', {

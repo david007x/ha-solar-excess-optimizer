@@ -11,6 +11,7 @@ class SolarController:
         self.cfg          = cfg
         self.hysteresis_w = cfg.get("hysteresis_w", 150)
         self.grid_entity  = cfg["grid_power_entity"]
+        self.sensor_stabilize_sec: int = cfg.get("sensor_stabilize_sec", 60)
         self.cycle_log: list[dict] = []
 
         self.devices: list[BaseDevice] = []
@@ -46,16 +47,29 @@ class SolarController:
         surplus = await self.get_surplus_w()
 
         # ── Brutto-Überschuss berechnen ───────────────────────────────────────
-        # Der Grid-Sensor ist ein NETTO-Wert: er zeigt den Überschuss BEREITS
-        # nach Abzug aller laufenden Verbraucher.
-        # Um korrekt zu regeln müssen wir den Brutto-Überschuss kennen:
-        # Brutto = Netto + Summe aller aktuell laufenden Geräteverbrauche
-        # So sieht jedes Gerät im Loop den vollen verfügbaren Überschuss
-        # BEVOR seine eigene Leistung abgezogen wird.
-        running_consumption = sum(
-            d._actual_consumption_w for d in self.devices if d._active
-        )
-        gross_surplus = surplus + running_consumption
+        # Grid-Sensor ist NETTO: zeigt Überschuss NACH laufenden Verbrauchern.
+        #
+        # Strategie: Hybridansatz mit Lag-Schutz
+        # - Direkt nach Einschalten (< stabilize_sec): _allocated_w nutzen
+        #   (Sensor hat noch nicht reagiert → allocated ist zuverlässiger)
+        # - Nach Stabilisierung (>= stabilize_sec): consumption_entity nutzen
+        #   wenn vorhanden (echte Leistung, z.B. Auto fast voll → weniger als allocated)
+        # - Ohne consumption_entity: immer _allocated_w
+        STABILIZE_SEC = self.sensor_stabilize_sec
+        import time as _time
+        running_w = 0.0
+        for d in self.devices:
+            if not d._active:
+                continue
+            active_sec = _time.time() - d._active_since if hasattr(d, '_active_since') and d._active_since > 0 else 0
+            has_sensor = hasattr(d, 'consumption_entity') and d.consumption_entity and d._actual_consumption_w > 0
+            if has_sensor and active_sec >= STABILIZE_SEC:
+                # Sensor stabil → minimum aus allocated und sensor (konservativer Ansatz)
+                running_w += min(d._allocated_w, d._actual_consumption_w)
+            else:
+                # Noch nicht stabil oder kein Sensor → allocated nutzen
+                running_w += d._allocated_w
+        gross_surplus = surplus + running_w
         available = gross_surplus
         results   = []
 

@@ -78,6 +78,7 @@ class WallboxDevice(BaseDevice):
 
             self._current_step = step
             self._active = True
+            self._allocated_w = self._steps[step][1] if step >= 0 else 0
             self._last_change_time = time.time()
             if self._start_time == 0:
                 self._start_time = time.time()
@@ -94,6 +95,7 @@ class WallboxDevice(BaseDevice):
             await turn_off(self.switch_entity)
             self._current_step = -1
             self._active = False
+            self._allocated_w = 0
             self._start_time = 0
             self._record_deactivation()
             self._last_change_time = time.time()

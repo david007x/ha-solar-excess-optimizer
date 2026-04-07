@@ -1,6 +1,6 @@
 name: "HA Solar Excess Optimizer"
 description: "Modular PV surplus control – wallbox, boiler, smart plugs & more"
-version: "0.1.3"
+version: "0.1.5"
 slug: "ha_solar_excess_optimizer"
 init: false
 arch:
@@ -23,48 +23,16 @@ options:
   #   priority: 1
   #   enabled: true
   #   soc_entity: sensor.batterie_soc
-  #   power_entity: sensor.batterie_ladeleistung   # optional
+  #   consumption_entity: sensor.batterie_ladeleistung   # optional
+  #   consumption_unit: W
   #   target_soc: 100
   #   max_charge_power_w: 5000
 
   # Time-based hysteresis (seconds)
   on_delay_sec: 30
   off_delay_sec: 20
-  devices:
-    - name: "Wallbox"
-      type: "variable"
-      priority: 1
-      enabled: true
-      switch_entity: "switch.wallbox"
-      power_entity: "number.wallbox_current_ampere"
-      power_min: 1400
-      power_max: 11000
-      power_step: 230
-      ramp_interval_sec: 30
-    - name: "Heating Rod"
-      type: "stepped"
-      priority: 2
-      enabled: true
-      steps:
-        - switch_entity: "switch.heizstab_stufe1"
-          power_w: 1000
-        - switch_entity: "switch.heizstab_stufe2"
-          power_w: 2000
-        - switch_entity: "switch.heizstab_stufe3"
-          power_w: 3000
-    - name: "Freezer"
-      type: "switch"
-      priority: 3
-      enabled: true
-      switch_entity: "switch.steckdose_gefrier"
-      power_w: 150
-    - name: "Washing Machine"
-      type: "timed"
-      priority: 4
-      enabled: true
-      switch_entity: "switch.steckdose_waschmaschine"
-      power_w: 2000
-      min_runtime_minutes: 90
+  sensor_stabilize_sec: 60
+  devices: []
 
 schema:
   grid_power_entity: str
@@ -73,35 +41,8 @@ schema:
   log_level: list(debug|info|warning|error)
   on_delay_sec: int?
   off_delay_sec: int?
-  devices:
-    - name: str
-      type: list(switch|stepped|variable|timed|battery|wallbox)
-      priority: int
-      enabled: bool
-      switch_entity: str?
-      power_entity: str?
-      power_w: int?
-      power_min: int?
-      power_max: int?
-      power_step: int?
-      ramp_interval_sec: int?
-      min_runtime_minutes: int?
-      on_delay_sec: int?
-      off_delay_sec: int?
-      min_runtime_sec: int?
-      condition_entity: str?
-      condition_states: str?
-      consumption_entity: str?
-      consumption_unit: str?
-      soc_entity: str?
-      target_soc: int?
-      max_charge_power_w: int?
-      steps_a: str?
-      voltage: int?
-      power_cycle_delay_sec: int?
-      steps:
-        - switch_entity: str
-          power_w: int
+  sensor_stabilize_sec: int?
+  devices: []
 
 ports:
   8099/tcp: 8099

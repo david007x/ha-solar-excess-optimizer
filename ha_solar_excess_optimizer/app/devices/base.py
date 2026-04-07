@@ -43,6 +43,7 @@ class BaseDevice(ABC):
         self._off_condition_since: float | None = None
         self._condition_blocked: bool = False
         self._actual_consumption_w: float = 0.0
+        self._allocated_w: float = 0.0  # intern zugeteilte Leistung (stabil, kein Sensor-Lag)
 
         # Mindestlaufzeit nach Einschalten (verhindert Flapping)
         self.min_runtime_sec: int = cfg.get("min_runtime_sec", 60)

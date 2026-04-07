@@ -49,8 +49,10 @@ class SwitchDevice(BaseDevice):
                 self.log(f"OFF – surplus {surplus_w:.0f}W too low")
 
         if not self._active:
+            self._allocated_w = 0
             return 0
-        return await self.read_consumption(self.power_w)
+        await self.read_consumption(self.power_w)  # nur Anzeige
+        return self.power_w
 
     async def shutdown(self):
         await turn_off(self.switch_entity)
