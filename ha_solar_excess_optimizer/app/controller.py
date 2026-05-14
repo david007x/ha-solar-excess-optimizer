@@ -1,4 +1,5 @@
 import logging
+import time
 from devices.factory import create_device
 from devices.base import BaseDevice, OVERRIDE_AUTO
 from ha_client import get_numeric_state
@@ -56,12 +57,11 @@ class SolarController:
         #   wenn vorhanden (echte Leistung, z.B. Auto fast voll → weniger als allocated)
         # - Ohne consumption_entity: immer _allocated_w
         STABILIZE_SEC = self.sensor_stabilize_sec
-        import time as _time
         running_w = 0.0
         for d in self.devices:
             if not d._active:
                 continue
-            active_sec = _time.time() - d._active_since if hasattr(d, '_active_since') and d._active_since > 0 else 0
+            active_sec = time.time() - d._active_since if d._active_since > 0 else 0
             has_sensor = hasattr(d, 'consumption_entity') and d.consumption_entity and d._actual_consumption_w > 0
             if has_sensor and active_sec >= STABILIZE_SEC:
                 # Sensor stabil → minimum aus allocated und sensor (konservativer Ansatz)

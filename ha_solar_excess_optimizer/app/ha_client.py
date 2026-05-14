@@ -7,6 +7,15 @@ logger = logging.getLogger(__name__)
 HA_URL   = os.environ.get("HA_URL", "http://supervisor/core")
 HA_TOKEN = os.environ.get("HA_TOKEN", "")
 
+_session: aiohttp.ClientSession | None = None
+
+
+def _get_session() -> aiohttp.ClientSession:
+    global _session
+    if _session is None or _session.closed:
+        _session = aiohttp.ClientSession()
+    return _session
+
 
 def _headers():
     return {
@@ -17,9 +26,9 @@ def _headers():
 
 async def get_state(entity_id: str) -> dict | None:
     try:
-        async with aiohttp.ClientSession() as s:
-            async with s.get(f"{HA_URL}/api/states/{entity_id}", headers=_headers()) as r:
-                return await r.json() if r.status == 200 else None
+        session = _get_session()
+        async with session.get(f"{HA_URL}/api/states/{entity_id}", headers=_headers()) as r:
+            return await r.json() if r.status == 200 else None
     except Exception as e:
         logger.error(f"get_state({entity_id}): {e}")
         return None
@@ -31,7 +40,6 @@ async def get_numeric_state(entity_id: str) -> float:
         if not state:
             return 0.0
         raw = str(state["state"]).strip()
-        # Europäisches Komma als Dezimaltrennzeichen behandeln (z.B. "1,2" → "1.2")
         raw = raw.replace(",", ".")
         return float(raw)
     except (ValueError, KeyError):
@@ -55,17 +63,32 @@ async def set_number(entity_id: str, value: float):
     """Set a number.* entity (e.g. wallbox ampere)."""
     url = f"{HA_URL}/api/services/number/set_value"
     try:
-        async with aiohttp.ClientSession() as s:
-            await s.post(url, headers=_headers(),
-                         json={"entity_id": entity_id, "value": value})
+        session = _get_session()
+        async with session.post(url, headers=_headers(),
+                                json={"entity_id": entity_id, "value": value}) as r:
+            if r.status not in (200, 201):
+                logger.warning(f"set_number({entity_id}, {value}): HTTP {r.status}")
     except Exception as e:
         logger.error(f"set_number({entity_id}, {value}): {e}")
+
+
+async def get_all_states() -> list[dict]:
+    """Fetch all entity states from HA."""
+    try:
+        session = _get_session()
+        async with session.get(f"{HA_URL}/api/states", headers=_headers()) as r:
+            return await r.json() if r.status == 200 else []
+    except Exception as e:
+        logger.error(f"get_all_states: {e}")
+        return []
 
 
 async def _call_service(domain: str, service: str, entity_id: str):
     url = f"{HA_URL}/api/services/{domain}/{service}"
     try:
-        async with aiohttp.ClientSession() as s:
-            await s.post(url, headers=_headers(), json={"entity_id": entity_id})
+        session = _get_session()
+        async with session.post(url, headers=_headers(), json={"entity_id": entity_id}) as r:
+            if r.status not in (200, 201):
+                logger.warning(f"service {domain}.{service}({entity_id}): HTTP {r.status}")
     except Exception as e:
         logger.error(f"service {domain}.{service}({entity_id}): {e}")

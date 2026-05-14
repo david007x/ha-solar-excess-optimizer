@@ -31,6 +31,14 @@ class BatteryDevice(BaseDevice):
         if self.power_entity:
             self._charge_power = await get_numeric_state(self.power_entity)
 
+        if self._override == OVERRIDE_FORCE_ON:
+            self._active = True
+            reserved = min(surplus_w, self.max_charge_power_w)
+            reserved = max(0, reserved)
+            self._actual_consumption_w = reserved
+            self.log(f"Charging forced ON | reserved {reserved:.0f}W")
+            return reserved
+
         if self._override == OVERRIDE_FORCE_OFF:
             self._active = False
             self.log("Battery reservation disabled (override: force_off)")

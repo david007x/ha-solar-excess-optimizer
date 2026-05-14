@@ -4,6 +4,7 @@ import logging
 import config as cfg_module
 from aiohttp import web
 from controller import SolarController
+from ha_client import get_all_states
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 _cfg = cfg_module.load()
@@ -590,6 +591,11 @@ function showPage(id) {
   if (id === 'config') loadConfigForm();
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ─── Dashboard refresh ───────────────────────────────────────────────────────
 let _data = null;
 async function refresh() {
@@ -693,8 +699,8 @@ function renderDeviceCard(dev) {
     <div class="device-card ${cardCls}">
       <div class="device-top">
         <div>
-          <div class="device-name">${dev.name}${condBadge}</div>
-          <div class="device-type">${dev.type} · P${dev.priority}</div>
+          <div class="device-name">${escapeHtml(dev.name)}${condBadge}</div>
+          <div class="device-type">${escapeHtml(dev.type)} · P${dev.priority}</div>
         </div>
         <span class="device-badge ${badgeCls}">${badgeText}</span>
       </div>
@@ -733,8 +739,8 @@ function renderDeviceList() {
   el.innerHTML = _localDevices.map((d, i) => `
     <div class="device-list-item">
       <div class="dli-left">
-        <span class="dli-name">${d.name}</span>
-        <span class="dli-meta">${d.type} · Priority ${d.priority} · ${getPowerLabel(d)}</span>
+        <span class="dli-name">${escapeHtml(d.name)}</span>
+        <span class="dli-meta">${escapeHtml(d.type)} · Priority ${d.priority} · ${escapeHtml(getPowerLabel(d))}</span>
       </div>
       <div class="dli-right">
         <label class="toggle">
@@ -977,12 +983,6 @@ setInterval(refresh, 10000);
 // ─── Entity Picker ────────────────────────────────────────────────────────────
 let _entities = null;   // cached after first load
 let _activePicker = null;
-
-async function loadEntities(domains) {
-  const qs = domains ? '?domain=' + domains : '';
-  const r = await fetch('/api/entities' + qs);
-  return await r.json();
-}
 
 async function openPicker(wrapId, inputId, domains) {
   // Close any open picker
@@ -1256,16 +1256,9 @@ async def handle_entities(request):
     domain_filter = request.rel_url.query.get("domain", "")
     domains = [d.strip() for d in domain_filter.split(",") if d.strip()]
     try:
-        import aiohttp as _aiohttp
-        import os as _os
-        ha_url = _os.environ.get("HA_URL", "http://supervisor/core")
-        ha_token = _os.environ.get("HA_TOKEN", "")
-        headers = {"Authorization": f"Bearer {ha_token}"}
-        async with _aiohttp.ClientSession() as session:
-            async with session.get(f"{ha_url}/api/states", headers=headers) as resp:
-                if resp.status != 200:
-                    return web.Response(status=502, text='{"error":"HA nicht erreichbar"}')
-                states = await resp.json()
+        states = await get_all_states()
+        if not states and domain_filter:
+            return web.Response(status=502, text='{"error":"HA nicht erreichbar"}')
 
         entities = []
         for s in states:
