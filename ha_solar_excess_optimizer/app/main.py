@@ -596,11 +596,16 @@ function escapeHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Base path for API calls – works via HA Ingress and direct port access.
+// Ingress: pathname = /api/hassio/app/ha_solar_excess_optimizer → _BASE = that path
+// Direct:  pathname = /  →  _BASE = ''
+const _BASE = window.location.pathname.replace(/\/+$/, '');
+
 // ─── Dashboard refresh ───────────────────────────────────────────────────────
 let _data = null;
 async function refresh() {
   try {
-    const r = await fetch('/api/status');
+    const r = await fetch(_BASE + '/api/status');
     _data = await r.json();
     renderDashboard(_data);
   } catch(e) {}
@@ -722,7 +727,7 @@ function renderDeviceCard(dev) {
 let _localDevices = [];
 
 async function loadConfigForm() {
-  const r = await fetch('/api/config');
+  const r = await fetch(_BASE + '/api/config');
   const cfg = await r.json();
   document.getElementById('cfg-grid-entity').value = cfg.grid_power_entity || '';
   document.getElementById('cfg-hysteresis').value = cfg.hysteresis_w || 150;
@@ -854,7 +859,7 @@ async function saveConfig() {
     sensor_stabilize_sec: parseInt(document.getElementById('cfg-stabilize').value) || 60,
     devices: _localDevices,
   };
-  await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
+  await fetch(_BASE + '/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
   alert('Saved! Reloading configuration.');
   loadConfigForm();
 }
@@ -1127,7 +1132,7 @@ function initDragDrop() {
 }
 // ─── Override ─────────────────────────────────────────────────────────────────
 async function setOverride(deviceName, mode) {
-  await fetch('/api/override', {
+  await fetch(_BASE + '/api/override', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({name: decodeURIComponent(deviceName), mode})
@@ -1146,7 +1151,7 @@ async function loadEntities(domains) {
     return _epCache[key].data;
   }
   const qs = domains ? '?domain=' + domains : '';
-  const r = await fetch('/api/entities' + qs);
+  const r = await fetch(_BASE + '/api/entities' + qs);
   const data = await r.json();
   _epCache[key] = { data, ts: now };
   return data;
