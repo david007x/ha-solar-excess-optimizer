@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import time
 import logging
-from ha_client import get_state, get_numeric_state
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +107,7 @@ class BaseDevice(ABC):
         """
         if not self.condition_entity:
             return True
+        from ha_client import get_state
         state = await get_state(self.condition_entity)
         if state is None:
             self.log(f"⚠ condition_entity '{self.condition_entity}' not found")
@@ -144,6 +144,7 @@ class BaseDevice(ABC):
         if not self.consumption_entity:
             self._actual_consumption_w = fallback_w
             return fallback_w
+        from ha_client import get_numeric_state
         val = await get_numeric_state(self.consumption_entity)
         self._actual_consumption_w = val
         return val
