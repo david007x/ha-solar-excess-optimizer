@@ -1,6 +1,6 @@
 name: "HA Solar Excess Optimizer"
 description: "Modular PV surplus control – wallbox, boiler, smart plugs & more"
-version: "0.2.2"
+version: "0.2.3"
 slug: "ha_solar_excess_optimizer"
 init: false
 ingress: true
