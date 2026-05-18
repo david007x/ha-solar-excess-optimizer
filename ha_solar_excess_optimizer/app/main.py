@@ -226,7 +226,7 @@ HTML = r"""<!DOCTYPE html>
                  padding: .45rem .5rem; cursor: pointer; flex-shrink: 0; }
 
   /* DRAG & DROP */
-  .device-list-item { cursor: grab; user-select: none; transition: opacity .2s, transform .2s; }
+  .device-list-item { cursor: grab; user-select: none; transition: opacity .2s, transform .2m; }
   .device-list-item.dragging { opacity: .4; cursor: grabbing; }
   .device-list-item.drag-over { border-color: var(--grid); transform: scale(1.01); }
   .drag-handle { color: var(--muted); font-size: 1rem; cursor: grab; padding: 0 6px;
@@ -862,6 +862,7 @@ async function saveConfig() {
   await fetch(_BASE + '/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
   alert('Saved! Reloading configuration.');
   loadConfigForm();
+  startRefreshLoop(cfg.update_interval_sec || 10);
 }
 
 // ─── Add Device ───────────────────────────────────────────────────────────────
@@ -982,8 +983,16 @@ function addDevice() {
 
 // ─── Config API ───────────────────────────────────────────────────────────────
 // Start
+let _refreshTimer = null;
+function startRefreshLoop(intervalSec) {
+  if (_refreshTimer) clearInterval(_refreshTimer);
+  _refreshTimer = setInterval(refresh, Math.max(1, intervalSec) * 1000);
+}
+
 refresh();
-setInterval(refresh, 10000);
+fetch(_BASE + '/api/config').then(r => r.json()).then(cfg => {
+  startRefreshLoop(cfg.update_interval_sec || 10);
+}).catch(() => startRefreshLoop(10));
 
 // ─── Entity Picker ────────────────────────────────────────────────────────────
 let _entities = null;   // cached after first load
