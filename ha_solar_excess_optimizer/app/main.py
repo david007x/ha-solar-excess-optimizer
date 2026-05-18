@@ -284,7 +284,7 @@ HTML = r"""<!DOCTYPE html>
     <div class="form-row">
       <div class="form-group">
         <label>Update Interval (sec)</label>
-        <input id="cfg-interval" type="number" value="10">
+        <input id="cfg-interval" type="number" value="10" min="1">
       </div>
       <div class="form-group">
         <label>Log Level</label>
@@ -1202,17 +1202,16 @@ async def handle_post_config(request):
 
 # ─── Regelschleife ────────────────────────────────────────────────────────────
 
-async def control_loop(cfg: dict):
+async def control_loop():
     global _last_status
-    interval = cfg.get("update_interval_sec", 10)
-    logger.info(f"Control loop active (interval: {interval}s)")
+    logger.info(f"Control loop active (interval: {controller.interval_sec}s)")
     while True:
         try:
             result = await controller.run_cycle()
             _last_status = result
         except Exception as e:
             logger.error(f"Control cycle error: {e}", exc_info=True)
-        await asyncio.sleep(interval)
+        await asyncio.sleep(controller.interval_sec)
 
 
 # ─── Start ────────────────────────────────────────────────────────────────────
@@ -1309,7 +1308,7 @@ async def main():
     await web.TCPSite(runner, "0.0.0.0", 8099).start()
     logger.info("Web UI: http://0.0.0.0:8099")
 
-    await control_loop(cfg)
+    await control_loop()
 
 
 if __name__ == "__main__":
