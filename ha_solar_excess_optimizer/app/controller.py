@@ -13,6 +13,7 @@ class SolarController:
         self.hysteresis_w = cfg.get("hysteresis_w", 150)
         self.grid_entity  = cfg["grid_power_entity"]
         self.sensor_stabilize_sec: int = cfg.get("sensor_stabilize_sec", 60)
+        self.interval_sec: int = cfg.get("update_interval_sec", 10)
         self.cycle_log: list[dict] = []
 
         self.devices: list[BaseDevice] = []
@@ -47,7 +48,7 @@ class SolarController:
     async def run_cycle(self) -> dict:
         surplus = await self.get_surplus_w()
 
-        # ── Brutto-Überschuss berechnen ───────────────────────────────────────
+        # ── Brutto-Überschuss berechnen ─────────────────────────────────────────────────────
         # Grid-Sensor ist NETTO: zeigt Überschuss NACH laufenden Verbrauchern.
         #
         # Strategie: Hybridansatz mit Lag-Schutz
@@ -87,7 +88,7 @@ class SolarController:
         entry = {
             "surplus_w":   round(surplus, 1),
             "gross_surplus_w": round(gross_surplus, 1),
-            "remaining_w": round(surplus, 1),   # Anzeige = Netto-Grid (korrekt)
+            "remaining_w": round(surplus, 1),
             "allocated_w": round(allocated, 1),
             "devices":     results,
         }
