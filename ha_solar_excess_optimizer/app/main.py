@@ -5,6 +5,7 @@ import config as cfg_module
 from aiohttp import web
 from controller import SolarController
 from ha_client import get_all_states
+from ha_publisher import publish
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 _cfg = cfg_module.load()
@@ -242,9 +243,9 @@ HTML = r"""<!DOCTYPE html>
     <span class="logo">☀ HA SOLAR EXCESS</span>
   </div>
   <div class="tab-bar">
-    <button class="tab active" onclick="showPage('dashboard')">Dashboard</button>
-    <button class="tab" onclick="showPage('config')">Devices</button>
-    <button class="tab" onclick="showPage('log')">Log</button>
+    <button class="tab active" onclick="showPage(event,'dashboard')">Dashboard</button>
+    <button class="tab" onclick="showPage(event,'config')">Devices</button>
+    <button class="tab" onclick="showPage(event,'log')">Log</button>
   </div>
 </header>
 
@@ -398,6 +399,12 @@ HTML = r"""<!DOCTYPE html>
         <div class="form-group">
           <label>Ramp Interval (sec)</label>
           <input id="var-ramp" type="number" value="30">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Spannung (V) <span style="color:var(--muted);font-weight:400">– für Watt→Ampere Umrechnung</span></label>
+          <input id="var-voltage" type="number" value="230">
         </div>
       </div>
     </div>
@@ -583,11 +590,11 @@ HTML = r"""<!DOCTYPE html>
 
 <script>
 // ─── Navigation ──────────────────────────────────────────────────────────────
-function showPage(id) {
+function showPage(event, id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  event.target.classList.add('active');
+  event.currentTarget.classList.add('active');
   if (id === 'config') loadConfigForm();
 }
 
@@ -612,6 +619,7 @@ async function refresh() {
 }
 
 function renderDashboard(d) {
+  if (!d || !d.devices) return;
   const s = d.surplus_w;
   setVal('surplus-val', (s >= 0 ? '+' : '') + s + ' W', s >= 0 ? 'pos' : 'neg');
 
@@ -698,7 +706,7 @@ function renderDeviceCard(dev) {
              <div class="device-log">SOC: ${soc}% → Target: ${tgt}% | Max: ${dev.max_charge_power_w||0}W</div>`;
   }
 
-  const log = (dev.log || []).slice(0, 2).join('<br>');
+  const log = (dev.log || []).slice(0, 2).map(escapeHtml).join('<br>');
   const n = encodeURIComponent(dev.name);
   return `
     <div class="device-card ${cardCls}">
@@ -742,7 +750,10 @@ function renderDeviceList() {
   const el = document.getElementById('device-list-config');
   if (!_localDevices.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.8rem">Noch keine Devices konfiguriert.</p>'; return; }
   el.innerHTML = _localDevices.map((d, i) => `
-    <div class="device-list-item">
+    <div class="device-list-item" draggable="true"
+         ondragstart="onDragStart(event,${i})" ondragover="onDragOver(event,${i})"
+         ondrop="onDrop(event,${i})" ondragend="onDragEnd(event)">
+      <span class="drag-handle">⠿</span>
       <div class="dli-left">
         <span class="dli-name">${escapeHtml(d.name)}</span>
         <span class="dli-meta">${escapeHtml(d.type)} · Priority ${d.priority} · ${escapeHtml(getPowerLabel(d))}</span>
@@ -814,13 +825,14 @@ function editDevice(i) {
     document.getElementById('var-max').value = d.power_max || 11000;
     document.getElementById('var-step').value = d.power_step || 230;
     document.getElementById('var-ramp').value = d.ramp_interval_sec || 30;
+    document.getElementById('var-voltage').value = d.voltage || 230;
   } else if (d.type === 'timed') {
     document.getElementById('tim-entity').value = d.switch_entity || '';
     document.getElementById('tim-power').value = d.power_w || '';
     document.getElementById('tim-runtime').value = d.min_runtime_minutes || 90;
   } else if (d.type === 'battery') {
     document.getElementById('bat-soc-entity').value = d.soc_entity || '';
-    // bat-power-entity entfernt → consumption_entity unter Erweitert
+    document.getElementById('bat-power-entity').value = d.power_entity || '';
     document.getElementById('bat-target-soc').value = d.target_soc || 100;
     document.getElementById('bat-max-power').value = d.max_charge_power_w || 5000;
   } else if (d.type === 'wallbox') {
@@ -851,8 +863,10 @@ function editDevice(i) {
 }
 
 async function saveConfig() {
+  const gridEntity = document.getElementById('cfg-grid-entity').value.trim();
+  if (!gridEntity) { alert('Bitte Grid Power Entity angeben.'); return; }
   const cfg = {
-    grid_power_entity: document.getElementById('cfg-grid-entity').value,
+    grid_power_entity: gridEntity,
     hysteresis_w: parseInt(document.getElementById('cfg-hysteresis').value),
     update_interval_sec: parseInt(document.getElementById('cfg-interval').value),
     log_level: document.getElementById('cfg-loglevel').value,
@@ -933,6 +947,7 @@ function addDevice() {
     dev.power_max = parseInt(document.getElementById('var-max').value) || 11000;
     dev.power_step = parseInt(document.getElementById('var-step').value) || 230;
     dev.ramp_interval_sec = parseInt(document.getElementById('var-ramp').value) || 30;
+    dev.voltage = parseInt(document.getElementById('var-voltage').value) || 230;
   } else if (_selectedType === 'timed') {
     dev.switch_entity = document.getElementById('tim-entity').value;
     dev.power_w = parseInt(document.getElementById('tim-power').value) || 0;
@@ -946,7 +961,8 @@ function addDevice() {
     dev.ramp_interval_sec = parseInt(document.getElementById('wb-ramp-interval').value) || 30;
   } else if (_selectedType === 'battery') {
     dev.soc_entity = document.getElementById('bat-soc-entity').value;
-  // power_entity bei battery entfernt
+    const batPwr = document.getElementById('bat-power-entity').value;
+    if (batPwr) dev.power_entity = batPwr;
     dev.target_soc = parseInt(document.getElementById('bat-target-soc').value) || 100;
     dev.max_charge_power_w = parseInt(document.getElementById('bat-max-power').value) || 5000;
   }
@@ -1057,14 +1073,21 @@ function renderEntityList(list, entities, inputEl, dropdown) {
     list.innerHTML = '<div class="ep-empty">No entities found</div>';
     return;
   }
-  list.innerHTML = entities.slice(0, 150).map(e => `
-    <div class="ep-item" onclick="selectEntity('${e.entity_id}', '${inputEl.id}')">
+  list.innerHTML = entities.slice(0, 150).map(e => {
+    const safeId   = escapeHtml(e.entity_id);
+    const safeName = e.friendly_name !== e.entity_id ? escapeHtml(e.friendly_name) : '';
+    const safeState = escapeHtml(String(e.state));
+    const safeUnit  = e.unit ? ' ' + escapeHtml(e.unit) : '';
+    const jsId      = e.entity_id.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return `
+    <div class="ep-item" onclick="selectEntity('${jsId}', '${inputEl.id}')">
       <div>
-        <div class="ep-item-id">${e.entity_id}</div>
-        <div class="ep-item-meta">${e.friendly_name !== e.entity_id ? e.friendly_name : ''}</div>
+        <div class="ep-item-id">${safeId}</div>
+        <div class="ep-item-meta">${safeName}</div>
       </div>
-      <span class="ep-state">${e.state}${e.unit ? ' ' + e.unit : ''}</span>
-    </div>`).join('');
+      <span class="ep-state">${safeState}${safeUnit}</span>
+    </div>`;
+  }).join('');
 }
 
 function selectEntity(entityId, inputId) {
@@ -1213,14 +1236,15 @@ async def handle_post_config(request):
 
 async def control_loop():
     global _last_status
-    logger.info(f"Control loop active (interval: {controller.interval_sec}s)")
+    logger.info(f"Control loop active (interval: {controller.cfg.get('update_interval_sec', 10)}s)")
     while True:
         try:
             result = await controller.run_cycle()
             _last_status = result
+            await publish(result)
         except Exception as e:
             logger.error(f"Control cycle error: {e}", exc_info=True)
-        await asyncio.sleep(controller.interval_sec)
+        await asyncio.sleep(controller.cfg.get("update_interval_sec", 10))
 
 
 # ─── Start ────────────────────────────────────────────────────────────────────

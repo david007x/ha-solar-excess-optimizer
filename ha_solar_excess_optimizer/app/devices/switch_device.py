@@ -17,6 +17,8 @@ class SwitchDevice(BaseDevice):
             if not self._active:
                 await turn_on(self.switch_entity)
                 self._active = True
+                self._allocated_w = self.power_w
+                self._record_activation()
                 self.log("ON (override: force_on)")
             return await self.read_consumption(self.power_w)
 
@@ -24,6 +26,8 @@ class SwitchDevice(BaseDevice):
             if self._active:
                 await turn_off(self.switch_entity)
                 self._active = False
+                self._allocated_w = 0
+                self._record_deactivation()
                 self.log("OFF (override: force_off)")
             return 0
 
@@ -32,6 +36,8 @@ class SwitchDevice(BaseDevice):
             if self._active:
                 await turn_off(self.switch_entity)
                 self._active = False
+                self._allocated_w = 0
+                self._record_deactivation()
                 self.log(f"OFF – condition not met ({self.condition_entity})")
             return 0
 
@@ -39,19 +45,22 @@ class SwitchDevice(BaseDevice):
             if self._check_on_delay(surplus_w >= self.power_w + self.hysteresis_w):
                 await turn_on(self.switch_entity)
                 self._active = True
+                self._allocated_w = self.power_w
                 self._on_condition_since = None
+                self._record_activation()
                 self.log(f"ON – surplus {surplus_w:.0f}W")
         else:
             if self._check_off_delay(surplus_w < -self.hysteresis_w):
                 await turn_off(self.switch_entity)
                 self._active = False
+                self._allocated_w = 0
                 self._off_condition_since = None
+                self._record_deactivation()
                 self.log(f"OFF – surplus {surplus_w:.0f}W too low")
 
         if not self._active:
-            self._allocated_w = 0
             return 0
-        await self.read_consumption(self.power_w)  # nur Anzeige
+        await self.read_consumption(self.power_w)
         return self.power_w
 
     async def shutdown(self):

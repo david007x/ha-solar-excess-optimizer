@@ -31,7 +31,7 @@ Maintainer: [david007x](https://github.com/david007x)
 
 ## Add-ons in diesem Repository
 
-### ☀️ HA Solar Excess Optimizer v0.1.1
+### ☀️ HA Solar Excess Optimizer v0.2.6
 
 | Gerätetyp | Beschreibung | Beispiel |
 |---|---|---|

@@ -49,18 +49,25 @@ class SteppedDevice(BaseDevice):
 
         if self._current_step < 0:
             return 0
-        await self.read_consumption(self.steps[self._current_step]["power_w"])  # nur Anzeige
+        await self.read_consumption(self.steps[self._current_step]["power_w"])
         return self.steps[self._current_step]["power_w"]
 
     async def _activate_step(self, step: int):
+        was_active = self._active
         for s in self.steps:
             await turn_off(s["switch_entity"])
         if step >= 0:
             await turn_on(self.steps[step]["switch_entity"])
             self._active = True
+            self._allocated_w = self.steps[step]["power_w"]
+            if not was_active:
+                self._record_activation()
             self.log(f"Step {step+1} → {self.steps[step]['power_w']}W")
         else:
             self._active = False
+            self._allocated_w = 0
+            if was_active:
+                self._record_deactivation()
             self.log("OFF")
         self._current_step = step
 

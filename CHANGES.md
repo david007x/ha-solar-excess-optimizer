@@ -1,5 +1,26 @@
 # Änderungshistorie – ha-solar-excess-optimizer
 
+## v0.2.6 (2026-05-22)
+**15 Bugs behoben (vollständige Code-Analyse)**
+
+| # | Datei | Fix |
+|---|-------|-----|
+| 1 | `variable_device.py` | **Kritisch:** Falsch eingerücktes `return` machte die gesamte Auto-Logik unerreichbar – Variable-Device war in Auto-Mode komplett kaputt |
+| 2 | `switch/stepped/timed_device.py` | **Kritisch:** `_allocated_w` wurde bei aktivem Gerät nie gesetzt → Brutto-Überschuss-Berechnung im Controller war dauerhaft falsch |
+| 3 | `main.py` | **Kritisch:** Drag-and-Drop im Devices-Tab hatte CSS und JS-Funktionen, aber keine Event-Handler im DOM – Feature war tot |
+| 4 | `variable_device.py` | `voltage`-Feld hinzugefügt (Standard: 230V) – `_set_power()` hat bisher immer durch 230 geteilt, auch bei 3-Phasen-Geräten |
+| 5 | `main.py` | Regelintervall wird jetzt nach Config-Reload dynamisch aus `controller.cfg` gelesen statt einmalig beim Start |
+| 6 | `switch/stepped/variable/timed_device.py` | `_record_activation()` / `_record_deactivation()` in allen Gerätetypen aufgerufen → `min_runtime_sec` (Advanced-Setting) wirkt jetzt auch für diese Typen |
+| 7 | `timed_device.py` | `datetime.now().day` durch `date.today()` ersetzt – Tagesvergleich per Tag-im-Monat konnte nach >1 Monat Uptime falsch zurücksetzen |
+| 8 | `wallbox_device.py` | `asyncio.ensure_future()` (deprecated seit Python 3.10) durch `asyncio.create_task()` ersetzt |
+| 9 | `main.py` | `bat-power-entity` Feld wird jetzt in `addDevice()` und `editDevice()` gespeichert und wiederhergestellt |
+| 10 | `main.py` | `renderDashboard()` Guard hinzugefügt – kein stiller Crash mehr wenn `/api/status` vor dem ersten Regelzyklus aufgerufen wird |
+| 11 | `main.py` | `ha_publisher.publish()` wird jetzt nach jedem Regelzyklus aufgerufen – virtuelle HA-Sensoren (`sensor.seo_*`) werden endlich befüllt |
+| 12 | `main.py` | Log-Nachrichten in Gerätekarten werden jetzt durch `escapeHtml()` geschützt (XSS) |
+| 13 | `main.py` | Entity-Picker escaped `entity_id`, `friendly_name`, `state`, `unit` korrekt (XSS) |
+| 14 | `main.py` | `showPage()` nutzt Event-Parameter statt deprecated `event`-Global |
+| 15 | `main.py` | `saveConfig()` validiert Grid Power Entity vor dem Speichern |
+
 ## v0.2.2 (2026-05-14)
 **Fix: Doppelte Sidebar-Spalte**
 - `config.yaml`: `panel_icon` + `panel_title` hinzugefügt → HA Supervisor erstellt Sidebar-Eintrag automatisch via Ingress

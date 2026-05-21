@@ -14,6 +14,7 @@ class VariableDevice(BaseDevice):
         self.power_max: int     = cfg.get("power_max", 11000)
         self.power_step: int    = cfg.get("power_step", 230)
         self.ramp_interval: int = cfg.get("ramp_interval_sec", 30)
+        self.voltage: int       = cfg.get("voltage", 230)
         self._current_power_w: float = 0
         self._last_ramp_time: float  = 0
 
@@ -27,16 +28,20 @@ class VariableDevice(BaseDevice):
                 await turn_on(self.switch_entity)
                 self._active = True
                 self._current_power_w = self.power_max
+                self._allocated_w = self.power_max
                 await self._set_power(self.power_max)
+                self._record_activation()
                 self.log(f"ON at max {self.power_max}W (override)")
-            await self.read_consumption(self._current_power_w)  # nur Anzeige
-        return self._current_power_w
+            await self.read_consumption(self._current_power_w)
+            return self._current_power_w
 
         if self._override == OVERRIDE_FORCE_OFF:
             if self._active:
                 await turn_off(self.switch_entity)
                 self._active = False
                 self._current_power_w = 0
+                self._allocated_w = 0
+                self._record_deactivation()
                 self.log("OFF (override)")
             return 0
 
@@ -46,6 +51,8 @@ class VariableDevice(BaseDevice):
                 await turn_off(self.switch_entity)
                 self._active = False
                 self._current_power_w = 0
+                self._allocated_w = 0
+                self._record_deactivation()
                 self.log(f"OFF – condition not met ({self.condition_entity})")
             return 0
 
@@ -54,9 +61,11 @@ class VariableDevice(BaseDevice):
                 await turn_on(self.switch_entity)
                 self._active = True
                 self._current_power_w = self.power_min
+                self._allocated_w = self.power_min
                 await self._set_power(self.power_min)
                 self._on_condition_since = None
                 self._last_ramp_time = now
+                self._record_activation()
                 self.log(f"ON at {self.power_min}W")
             return 0
 
@@ -64,7 +73,9 @@ class VariableDevice(BaseDevice):
             await turn_off(self.switch_entity)
             self._active = False
             self._current_power_w = 0
+            self._allocated_w = 0
             self._off_condition_since = None
+            self._record_deactivation()
             self.log("OFF – insufficient surplus")
             return 0
         elif surplus_w >= -self.hysteresis_w:
@@ -83,25 +94,26 @@ class VariableDevice(BaseDevice):
                 await self._set_power(target)
                 self._last_ramp_time = now
 
-        await self.read_consumption(self._current_power_w)  # nur Anzeige
+        await self.read_consumption(self._current_power_w)
         return self._current_power_w
 
     async def _set_power(self, power_w: float):
-        await set_number(self.power_entity, round(power_w / 230))
+        await set_number(self.power_entity, round(power_w / self.voltage))
 
     async def shutdown(self):
         await turn_off(self.switch_entity)
         self._current_power_w = 0
+        self._allocated_w = 0
         self._active = False
 
     def status_dict(self) -> dict:
         return {
             **self._base_status(),
-            "power_w":    round(self._actual_consumption_w) if self._active else 0,
+            "power_w":     round(self._actual_consumption_w) if self._active else 0,
             "set_power_w": round(self._current_power_w),
-            "power_min":  self.power_min,
-            "power_max":  self.power_max,
-            "power_pct":  round((self._current_power_w - self.power_min) /
-                                max(1, self.power_max - self.power_min) * 100)
-                          if self._active else 0,
+            "power_min":   self.power_min,
+            "power_max":   self.power_max,
+            "power_pct":   round((self._current_power_w - self.power_min) /
+                                 max(1, self.power_max - self.power_min) * 100)
+                           if self._active else 0,
         }

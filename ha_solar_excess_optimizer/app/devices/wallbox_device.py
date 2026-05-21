@@ -117,21 +117,21 @@ class WallboxDevice(BaseDevice):
         # Override
         if self._override == OVERRIDE_FORCE_ON:
             if not self._active or self._current_step < 0:
-                asyncio.ensure_future(self._power_cycle_and_set(len(self._steps) - 1))
+                asyncio.create_task(self._power_cycle_and_set(len(self._steps) - 1))
             return await self.read_consumption(
                 self._steps[self._current_step][1] if self._current_step >= 0 else self._steps[-1][1]
             )
 
         if self._override == OVERRIDE_FORCE_OFF:
             if self._active:
-                asyncio.ensure_future(self._shutdown_wallbox())
+                asyncio.create_task(self._shutdown_wallbox())
             return 0
 
         # Condition prüfen
         self._condition_blocked = not await self.check_condition()
         if self._condition_blocked:
             if self._active:
-                asyncio.ensure_future(self._shutdown_wallbox())
+                asyncio.create_task(self._shutdown_wallbox())
             self.log(f"⛔ Bedingung nicht erfüllt: {self.condition_entity}")
             return 0
         else:
@@ -149,7 +149,7 @@ class WallboxDevice(BaseDevice):
         # Ausschalten wenn kein Überschuss für Mindeststufe
         if new_target == -1 and self._active:
             if self._check_off_delay(True) and ramp_ready and self._min_runtime_ok():
-                asyncio.ensure_future(self._shutdown_wallbox())
+                asyncio.create_task(self._shutdown_wallbox())
                 self._off_condition_since = None
             return await self.read_consumption(
                 self._steps[self._current_step][1] if self._current_step >= 0 else 0
@@ -166,7 +166,7 @@ class WallboxDevice(BaseDevice):
             )
             if ready and ramp_ready:
                 self._on_condition_since = None
-                asyncio.ensure_future(self._power_cycle_and_set(new_target))
+                asyncio.create_task(self._power_cycle_and_set(new_target))
             return 0
         elif self._active:
             self._check_on_delay(False)
@@ -176,7 +176,7 @@ class WallboxDevice(BaseDevice):
             direction = "▲" if new_target > self._current_step else "▼"
             a_new, w_new = self._steps[new_target] if new_target >= 0 else (0, 0)
             self.log(f"{direction} Stufenwechsel → {a_new}A ({w_new}W)")
-            asyncio.ensure_future(self._power_cycle_and_set(new_target))
+            asyncio.create_task(self._power_cycle_and_set(new_target))
 
         # Aktuellen Verbrauch zurückgeben
         if not self._active or self._current_step < 0:

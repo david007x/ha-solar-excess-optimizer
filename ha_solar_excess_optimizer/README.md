@@ -1,4 +1,4 @@
-# ☀️ HA Solar Excess Optimizer v0.1.6
+# ☀️ HA Solar Excess Optimizer v0.2.6
 
 Modulare PV-Überschussregelung für Home Assistant.
 Verteilt Solarstrom-Überschuss automatisch und priorisierg an konfigurierbare Verbraucher.
