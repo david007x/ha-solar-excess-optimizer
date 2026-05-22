@@ -1,5 +1,5 @@
 name: Solar Excess Optimizer
-version: "0.3.0"
+version: "0.3.1"
 slug: ha_solar_excess_optimizer
 description: Manages solar excess power by controlling devices based on surplus energy
 url: https://github.com/david007x/ha-solar-excess-optimizer
@@ -8,6 +8,7 @@ arch:
   - amd64
   - armhf
   - armv7
+homeassistant_api: true
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:solar-power

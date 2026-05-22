@@ -1,4 +1,4 @@
-# ha-solar-excess-optimizer v0.3.0
+# ha-solar-excess-optimizer v0.3.1
 
 Home Assistant addon for managing solar excess power.
 
