@@ -1,5 +1,21 @@
 # Änderungshistorie – ha-solar-excess-optimizer
 
+## v0.2.7 (2026-05-22)
+**Fix: Wallbox-Hysterese war nur einseitig**
+
+Die Funktion `_watts_to_step` hat bisher für Hoch- UND Runterschalten denselben
+Schwellwert `watts + hysteresis` verwendet. Das bedeutet: sobald der Überschuss
+nur 1W unter `watts_i + hysteresis` fiel, wurde sofort eine Stufe runtergeschaltet –
+obwohl die aktuelle Stufe noch problemlos gedeckt wäre.
+
+**Korrektur:** Bidirektionale Hysterese:
+- Hochschalten zu Stufe i: `surplus >= watts_i + hysteresis` (strenger)
+- Halten / Runterschalten: `surplus >= watts_i - hysteresis` (großzügiger)
+
+Beispiel bei 8A-Stufe (1840W) und 150W Hysterese:
+- Vorher: Stufenwechsel sobald Überschuss < 1990W
+- Nachher: Stufenwechsel erst wenn Überschuss < 1690W (300W Hysterese-Band)
+
 ## v0.2.6 (2026-05-22)
 **15 Bugs behoben (vollständige Code-Analyse)**
 

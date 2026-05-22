@@ -52,11 +52,20 @@ class WallboxDevice(BaseDevice):
         # Verhindert Flapping: Wallbox verbraucht Strom → Überschuss sinkt → sofort AUS
         self.min_runtime_sec: int = cfg.get("min_runtime_sec", 120)
 
-    def _watts_to_step(self, surplus_w: float) -> int:
-        """Findet die höchste Stufe die der Überschuss deckt. -1 = keine."""
+    def _watts_to_step(self, surplus_w: float, current_step: int = -1) -> int:
+        """Findet die höchste Stufe die der Überschuss deckt. -1 = keine.
+
+        Bidirektionale Hysterese:
+        - Hochschalten zu Stufe i:  surplus >= watts_i + hysteresis  (strenger)
+        - Halten / Runterschalten:  surplus >= watts_i - hysteresis  (großzügiger)
+
+        Verhindert Flapping: Stufe wird erst verlassen wenn Überschuss klar
+        unter watts_i - hysteresis fällt, nicht schon beim kleinsten Einbruch.
+        """
         target = -1
         for i, (_, watts) in enumerate(self._steps):
-            if surplus_w >= watts + self.hysteresis_w:
+            threshold = watts - self.hysteresis_w if i <= current_step else watts + self.hysteresis_w
+            if surplus_w >= threshold:
                 target = i
         return target
 
@@ -138,12 +147,12 @@ class WallboxDevice(BaseDevice):
             if self.condition_entity:
                 self.log(f"✅ Bedingung OK: {self.condition_entity}")
 
-        # Ziel-Stufe berechnen
-        new_target = self._watts_to_step(surplus_w)
+        # Ziel-Stufe berechnen (bidirektionale Hysterese)
+        new_target = self._watts_to_step(surplus_w, self._current_step)
         min_w = self._steps[0][1] if self._steps else 0
         self.log(
             f"Zyklus │ Überschuss: {surplus_w:.0f}W │ Aktiv: {self._active} │ "
-            f"Ziel-Stufe: {new_target} │ Min: {min_w}W+{self.hysteresis_w}W Hysterese"
+            f"Ziel-Stufe: {new_target} │ Min: {min_w}W±{self.hysteresis_w}W Hysterese"
         )
 
         # Ausschalten wenn kein Überschuss für Mindeststufe
