@@ -5,7 +5,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 HA_URL   = os.environ.get("HA_URL", "http://supervisor/core")
-HA_TOKEN = os.environ.get("HA_TOKEN", "")
+# HA Supervisor sets SUPERVISOR_TOKEN; HA_TOKEN is a fallback for local dev.
+HA_TOKEN = (
+    os.environ.get("SUPERVISOR_TOKEN")
+    or os.environ.get("HA_TOKEN")
+    or ""
+)
+
+if not HA_TOKEN:
+    logger.warning("No HA token found (SUPERVISOR_TOKEN / HA_TOKEN not set) – API calls will fail.")
 
 _session: aiohttp.ClientSession | None = None
 
@@ -77,6 +85,9 @@ async def get_all_states() -> list[dict]:
     try:
         session = _get_session()
         async with session.get(f"{HA_URL}/api/states", headers=_headers()) as r:
+            if r.status == 401:
+                logger.error("HA API 401 Unauthorized – check SUPERVISOR_TOKEN env var.")
+                return []
             return await r.json() if r.status == 200 else []
     except Exception as e:
         logger.error(f"get_all_states: {e}")

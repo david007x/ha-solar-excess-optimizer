@@ -1,5 +1,5 @@
 name: Solar Excess Optimizer
-version: "0.2.9"
+version: "0.3.0"
 slug: ha_solar_excess_optimizer
 description: Manages solar excess power by controlling devices based on surplus energy
 url: https://github.com/david007x/ha-solar-excess-optimizer
