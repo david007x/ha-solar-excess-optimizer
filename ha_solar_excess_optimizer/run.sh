@@ -1,6 +1,6 @@
 #!/usr/bin/with-contenv bashio
 
-bashio::log.info "Solar Excess Optimizer v0.2.8 starting..."
+bashio::log.info "Solar Excess Optimizer v0.2.9 starting..."
 
 # Cleanup any leftover panel entries from old versions
 python3 /app/cleanup_panel.py || true

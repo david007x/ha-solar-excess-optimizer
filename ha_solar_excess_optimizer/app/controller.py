@@ -11,7 +11,7 @@ class SolarController:
     def __init__(self, cfg: dict):
         self.cfg          = cfg
         self.hysteresis_w = cfg.get("hysteresis_w", 150)
-        self.grid_entity  = cfg["grid_power_entity"]
+        self.grid_entity  = cfg.get("grid_power_entity", "")
         self.sensor_stabilize_sec: int = cfg.get("sensor_stabilize_sec", 60)
         self.interval_sec: int = cfg.get("update_interval_sec", 10)
         self.cycle_log: list[dict] = []
@@ -45,7 +45,11 @@ class SolarController:
         """Read grid power. Positive = export = surplus."""
         return await get_numeric_state(self.grid_entity)
 
-    async def run_cycle(self) -> dict:
+    async def run_cycle(self) -> dict | None:
+        if not self.grid_entity:
+            logger.warning("grid_power_entity not configured – skipping cycle.")
+            return None
+
         surplus = await self.get_surplus_w()
 
         # ── Brutto-Überschuss berechnen ─────────────────────────────────────────────────────
@@ -65,10 +69,8 @@ class SolarController:
             active_sec = time.time() - d._active_since if d._active_since > 0 else 0
             has_sensor = hasattr(d, 'consumption_entity') and d.consumption_entity and d._actual_consumption_w > 0
             if has_sensor and active_sec >= STABILIZE_SEC:
-                # Sensor stabil → minimum aus allocated und sensor (konservativer Ansatz)
                 running_w += min(d._allocated_w, d._actual_consumption_w)
             else:
-                # Noch nicht stabil oder kein Sensor → allocated nutzen
                 running_w += d._allocated_w
         gross_surplus = surplus + running_w
         available = gross_surplus
