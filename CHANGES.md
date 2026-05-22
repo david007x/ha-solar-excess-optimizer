@@ -1,5 +1,18 @@
 # Änderungshistorie – ha-solar-excess-optimizer
 
+## v0.2.8 (2026-05-22)
+**Fix: SteppedDevice-Hysterese war nur einseitig**
+
+Dieselbe Korrektur wie v0.2.7 für die Wallbox: `new_target`-Berechnung nutzt
+jetzt bidirektionale Hysterese.
+
+- Hochschalten zu Stufe i: `surplus >= power_w + hysteresis`
+- Halten / Runterschalten: `surplus >= power_w - hysteresis`
+
+Previell bot `off_delay_sec` eine zeitliche Abpufferung, aber der Leistungsschwellwert
+selbst war in beide Richtungen falsch – schon ein minimaler Einbruch unter
+`power_w + hysteresis` löste den Off-Timer aus.
+
 ## v0.2.7 (2026-05-22)
 **Fix: Wallbox-Hysterese war nur einseitig**
 

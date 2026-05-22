@@ -25,9 +25,17 @@ class SteppedDevice(BaseDevice):
             await self._deactivate()
             return 0
 
+        # Bidirektionale Hysterese:
+        # - Hochschalten zu Stufe i: surplus >= power_w + hysteresis
+        # - Halten / Runterschalten: surplus >= power_w - hysteresis
         new_target = -1
         for i, step in enumerate(self.steps):
-            if surplus_w >= step["power_w"] + self.hysteresis_w:
+            threshold = (
+                step["power_w"] - self.hysteresis_w
+                if i <= self._current_step
+                else step["power_w"] + self.hysteresis_w
+            )
+            if surplus_w >= threshold:
                 new_target = i
 
         if new_target != self._target_step:
